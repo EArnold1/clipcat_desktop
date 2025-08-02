@@ -7,5 +7,7 @@ pub fn read_clipboard() -> Option<String> {
 
 pub fn write_clipboard(text: &str) {
     let mut clipboard = Clipboard::new().expect("should create an instance of the clipboard"); // NOTE: this might error if clipboards are not supported
-    clipboard.set_text(text).unwrap();
+    clipboard
+        .set_text(text)
+        .expect("should set text to clipboard");
 }

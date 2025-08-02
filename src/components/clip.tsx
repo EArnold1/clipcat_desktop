@@ -1,11 +1,20 @@
+import { invoke } from '@tauri-apps/api/core';
+
 type ItemProps = {
   id: string;
   value: string;
 };
 
-export const TextItem = ({ value }: ItemProps) => {
+export const TextItem = ({ value, id }: ItemProps) => {
+  const handleCopy = async () => {
+    await invoke('copy_clip', { id });
+  };
+
   return (
-    <div className="flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer">
+    <div
+      className="flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
+      onClick={handleCopy}
+    >
       <div className="flex-shrink-0 mt-1">
         <svg
           xmlns="http://www.w3.org/2000/svg"
