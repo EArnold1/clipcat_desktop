@@ -23,6 +23,7 @@ impl Item {
     }
 }
 
+// TODO: update this function
 fn generate_id() -> String {
     let mut rng = rand::rng();
 

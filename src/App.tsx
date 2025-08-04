@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import 'src/App.css';
 import { Clips } from 'components/clip';
 
 function App() {
   const [items, setItems] = useState<Array<{ id: string; value: string }>>([]);
 
-  async function loadClips() {
+  const loadClips = async () => {
     const clips = await invoke('load_clips');
 
     setItems(clips as typeof items);
-  }
+  };
+
+  listen('new_clip', (data) => {
+    console.log({ data }, 'new clip');
+  });
 
   useEffect(() => {
     loadClips();

@@ -1,9 +1,17 @@
 mod services;
 mod store;
 
+use std::{
+    sync::{mpsc, Arc},
+    thread,
+};
+
 use store::{get_item, list_items, Item};
 
-use crate::services::board::write_clipboard;
+use services::board::write_clipboard;
+use tauri::Emitter;
+
+use crate::services::background::watcher;
 
 #[tauri::command]
 fn load_clips() -> Vec<Item> {
@@ -16,16 +24,6 @@ fn load_clips() -> Vec<Item> {
 
 #[tauri::command]
 fn copy_clip(id: String) {
-    // if let Some(Some(Item { value, .. })) = get_item(&id).ok() {
-    //     write_clipboard(&value);
-    // }
-
-    // if let Ok(item) = get_item(&id) {
-    //     if let Some(Item { value, .. }) = item {
-    //         write_clipboard(&value);
-    //     }
-    // };
-
     if let Ok(Some(Item { value, .. })) = get_item(&id) {
         write_clipboard(&value)
     };
@@ -36,6 +34,37 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![load_clips, copy_clip])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app, event| {
+            // background task for when app is closed
+            if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+                api.prevent_exit();
+                thread::spawn(|| {
+                    watcher(None);
+                })
+                .join()
+                .expect("should join on the associated thread");
+            }
+
+            // background task for when app is loaded
+            if let tauri::RunEvent::Ready = &event {
+                let (tx, rx) = mpsc::channel();
+
+                let channel = Arc::new(tx);
+                let app_handle = app.clone();
+
+                watcher(Some(Arc::clone(&channel))); // Watcher for when app is loaded
+
+                // using a thread so it doesn't block the event loop and stop the ui from rendering
+                thread::spawn(move || {
+                    for value in rx {
+                        println!("copied value :{}", value);
+                        app_handle
+                            .emit("new_clip", value)
+                            .expect("should emit event");
+                    }
+                });
+            }
+        });
 }
