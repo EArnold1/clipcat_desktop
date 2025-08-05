@@ -3,7 +3,7 @@ use std::{collections::VecDeque, fmt::Debug, fs};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-use crate::services::search::fuzzy_search;
+use crate::services::{board::clear_board, search::fuzzy_search};
 
 // TODO: store in memory and only pinned items should be saved to a file
 
@@ -87,6 +87,7 @@ pub fn list_items() -> std::io::Result<Vec<Item>> {
 }
 
 pub fn clear_history() -> std::io::Result<()> {
+    clear_board();
     save_history(&Vec::new())
 }
 

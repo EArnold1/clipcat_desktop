@@ -23,6 +23,11 @@ function App() {
     setItems(clips);
   };
 
+  const clearClips = async () => {
+    await invoke<Array<ClipItem>>('clear_clips');
+    loadClips();
+  };
+
   useEffect(() => {
     void loadClips();
   }, []);
@@ -66,7 +71,10 @@ function App() {
 
         {/* Controls & Info */}
         <div className="flex items-center px-4 py-2 gap-2 border-b border-gray-200 text-xs justify-between">
-          <button className="flex items-center gap-1 px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 border border-gray-300">
+          <button
+            className="flex items-center gap-1 px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 border border-gray-300"
+            onClick={() => clearClips()}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -90,6 +98,7 @@ function App() {
       </section>
 
       {/* List */}
+
       <Clips items={items} />
     </main>
   );

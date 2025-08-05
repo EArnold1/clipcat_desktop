@@ -77,8 +77,12 @@ export const TextItem = ({ value, id }: TextItemProps) => {
 
 export const Clips = ({ items }: { items: TextItemProps[] }) => (
   <section className="mt-[98px] h-full">
-    {items.map((item) => (
-      <TextItem {...item} key={item.id} />
-    ))}
+    {items.length ? (
+      items.map((item) => <TextItem {...item} key={item.id} />)
+    ) : (
+      <div className="p-6 text-center text-sm text-gray-500">
+        No clipboard history yet. Copy something to get started.
+      </div>
+    )}
   </section>
 );

@@ -11,3 +11,8 @@ pub fn write_clipboard(text: &str) {
         .set_text(text)
         .expect("should set text to clipboard");
 }
+
+pub fn clear_board() {
+    let mut clipboard = Clipboard::new().expect("should create an instance of the clipboard"); // NOTE: this might error if clipboards are not supported
+    clipboard.clear().expect("should clear clipboard");
+}

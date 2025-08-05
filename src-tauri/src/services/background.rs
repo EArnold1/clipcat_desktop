@@ -16,8 +16,13 @@ pub fn watcher(sender: Option<Arc<Sender<Item>>>) {
             thread::sleep(Duration::from_secs(1)); // TODO: add settings file so this can be dynamic
 
             if let Some(value) = read_clipboard() {
-                if let Ok(Some(item)) = get_last_item() {
-                    if item.value != value {
+                if value.trim().is_empty() {
+                    continue;
+                }
+
+                match get_last_item() {
+                    Ok(Some(clip)) if clip.value == value => continue,
+                    Ok(_) => {
                         match save_item(&value) {
                             Ok(item) => {
                                 // using as_ref to get reference of the value in `tx_option`
@@ -33,8 +38,10 @@ pub fn watcher(sender: Option<Arc<Sender<Item>>>) {
                                 break; // this stops the entire process
                             }
                         }
-                    } else {
-                        continue;
+                    }
+                    Err(e) => {
+                        eprintln!("an error occurred: {:?}", e);
+                        break;
                     }
                 }
             }

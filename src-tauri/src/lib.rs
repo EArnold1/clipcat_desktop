@@ -11,7 +11,7 @@ use store::{get_item, list_items, Item};
 use services::board::write_clipboard;
 use tauri::Emitter;
 
-use crate::services::background::watcher;
+use crate::{services::background::watcher, store::clear_history};
 
 #[tauri::command]
 fn load_clips() -> Vec<Item> {
@@ -29,11 +29,18 @@ fn copy_clip(id: String) {
     };
 }
 
+#[tauri::command]
+fn clear_clips() {
+    if let Err(e) = clear_history() {
+        eprintln!("an error occurred while clearing clips :{:?}", e);
+    };
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![load_clips, copy_clip])
+        .invoke_handler(tauri::generate_handler![load_clips, copy_clip, clear_clips])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app, event| {
