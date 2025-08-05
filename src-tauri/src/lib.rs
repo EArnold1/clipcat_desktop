@@ -54,12 +54,11 @@ pub fn run() {
                 let channel = Arc::new(tx);
                 let app_handle = app.clone();
 
-                watcher(Some(Arc::clone(&channel))); // Watcher for when app is loaded
+                watcher(Some(Arc::clone(&channel)));
 
                 // using a thread so it doesn't block the event loop and stop the ui from rendering
                 thread::spawn(move || {
                     for value in rx {
-                        println!("copied value :{}", value);
                         app_handle
                             .emit("new_clip", value)
                             .expect("should emit event");

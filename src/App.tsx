@@ -1,24 +1,30 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import 'src/App.css';
 import { Clips } from 'components/clip';
+import { type ClipItem } from 'src/types/clip';
+import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
-  const [items, setItems] = useState<Array<{ id: string; value: string }>>([]);
+  const [items, setItems] = useState<Array<ClipItem>>([]);
 
-  const loadClips = async () => {
-    const clips = await invoke('load_clips');
+  const handleEvent = useCallback((payload: ClipItem) => {
+    setItems((prev) => [{ ...payload }, ...prev]);
+  }, []);
 
-    setItems(clips as typeof items);
-  };
-
-  listen('new_clip', (data) => {
-    console.log({ data }, 'new clip');
+  useTauriEventListener<ClipItem>({
+    eventName: 'new_clip',
+    handlePayload: handleEvent,
   });
 
+  const loadClips = async () => {
+    const clips = await invoke<Array<ClipItem>>('load_clips');
+
+    setItems(clips);
+  };
+
   useEffect(() => {
-    loadClips();
+    void loadClips();
   }, []);
 
   return (

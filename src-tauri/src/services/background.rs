@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::{thread, time::Duration};
 
 use crate::services::board::read_clipboard;
-use crate::store::{get_last_item, save_item};
+use crate::store::{get_last_item, save_item, Item};
 
-pub fn watcher(sender: Option<Arc<Sender<String>>>) {
+pub fn watcher(sender: Option<Arc<Sender<Item>>>) {
     let tx_option = match sender {
         Some(transmitter) => Some(Arc::clone(&transmitter)),
         None => None,
@@ -13,18 +13,16 @@ pub fn watcher(sender: Option<Arc<Sender<String>>>) {
 
     thread::spawn(move || {
         loop {
-            // Sleep for 5 seconds before polling the clipboard
-            thread::sleep(Duration::from_secs(5));
+            thread::sleep(Duration::from_secs(1)); // TODO: add settings file so this can be dynamic
 
             if let Some(value) = read_clipboard() {
                 if let Ok(Some(item)) = get_last_item() {
                     if item.value != value {
                         match save_item(&value) {
-                            Ok(_) => {
+                            Ok(item) => {
                                 // using as_ref to get reference of the value in `tx_option`
-                                // TODO: explain in details the use of as_ref
                                 if let Some(tx) = tx_option.as_ref() {
-                                    if let Err(e) = tx.send(value) {
+                                    if let Err(e) = tx.send(item) {
                                         eprintln!("an error occurred: {:?}", e); // FIXME: update error message and handle properly
                                         break; // this stops the entire process
                                     }

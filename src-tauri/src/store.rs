@@ -5,10 +5,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::services::search::fuzzy_search;
 
+// TODO: store in memory and only pinned items should be saved to a file
+
 /// max number of elements in the history
 const MAX_LENGTH: usize = 10;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Item {
     id: String,
     pub value: String,
@@ -52,7 +54,7 @@ pub fn save_history(history: &[Item]) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn save_item(value: &str) -> std::io::Result<()> {
+pub fn save_item(value: &str) -> std::io::Result<Item> {
     // TODO: ascertain the memory cost to convert to VecDeque and back to Vec
     let mut history = VecDeque::from(load_history()?);
 
@@ -63,11 +65,11 @@ pub fn save_item(value: &str) -> std::io::Result<()> {
 
     let item = Item::new(value.into());
 
-    history.push_back(item);
+    history.push_back(item.clone());
 
     save_history(&Vec::from(history))?;
 
-    Ok(())
+    Ok(item)
 }
 
 pub fn get_item(id: &str) -> std::io::Result<Option<Item>> {

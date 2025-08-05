@@ -1,13 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
+import { type ClipItem } from 'src/types/clip';
 
-type ItemProps = {
-  id: string;
-  value: string;
-};
+type TextItemProps = ClipItem;
 
-export const TextItem = ({ value, id }: ItemProps) => {
+export const TextItem = ({ value, id }: TextItemProps) => {
   const handleCopy = async () => {
-    await invoke('copy_clip', { id });
+    await invoke<TextItemProps['id']>('copy_clip', { id });
   };
 
   return (
@@ -77,7 +75,7 @@ export const TextItem = ({ value, id }: ItemProps) => {
   );
 };
 
-export const Clips = ({ items }: { items: ItemProps[] }) => (
+export const Clips = ({ items }: { items: TextItemProps[] }) => (
   <section className="mt-[98px] h-full">
     {items.map((item) => (
       <TextItem {...item} key={item.id} />
