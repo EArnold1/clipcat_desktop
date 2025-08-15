@@ -3,4 +3,9 @@ type ClipItem = {
   value: string;
 };
 
-export { type ClipItem };
+type ClipsData = {
+  pinned_clips: ClipItem[];
+  mem_clips: ClipItem[];
+};
+
+export { type ClipItem, type ClipsData };
