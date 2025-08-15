@@ -27,6 +27,7 @@ function App() {
   };
 
   const clearClips = async () => {
+    setItems((prev) => ({ ...prev, mem_clips: [] }));
     await invoke('clear_clips');
     loadClips();
   };
