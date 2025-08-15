@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import 'src/App.css';
 import { Clips } from 'components/clip';
-import { type ClipItem } from 'src/types/clip';
+import { ClipsData, type ClipItem } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
-  const [items, setItems] = useState<Array<ClipItem>>([]);
+  const [items, setItems] = useState<ClipsData>({
+    pinned_clips: [],
+    mem_clips: [],
+  });
 
   const handleEvent = useCallback((payload: ClipItem) => {
-    setItems((prev) => [{ ...payload }, ...prev]);
+    setItems((prev) => ({ ...prev, mem_clips: [payload, ...prev.mem_clips] }));
   }, []);
 
   useTauriEventListener<ClipItem>({
@@ -18,18 +21,18 @@ function App() {
   });
 
   const loadClips = async () => {
-    const clips = await invoke<Array<ClipItem>>('load_clips');
+    const clips = await invoke<ClipsData>('load_clips');
 
     setItems(clips);
   };
 
   const clearClips = async () => {
-    await invoke<Array<ClipItem>>('clear_clips');
+    await invoke('clear_clips');
     loadClips();
   };
 
   useEffect(() => {
-    console.log('loading clips');
+    // skipcq: JS-0098
     void loadClips();
   }, []);
 
@@ -100,7 +103,7 @@ function App() {
 
       {/* List */}
 
-      <Clips items={items} />
+      <Clips {...items} />
     </main>
   );
 }

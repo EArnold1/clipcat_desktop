@@ -1,9 +1,7 @@
-use std::{collections::VecDeque, fmt::Debug, fs};
-
-use rand::Rng;
 use serde::{Deserialize, Serialize};
+use std::{fmt::Debug, fs};
 
-use crate::services::{board::clear_board, search::fuzzy_search};
+use crate::services::board::clear_board;
 
 mod generator {
     use rand::{distr::Alphanumeric, Rng};
@@ -32,7 +30,7 @@ mod generator {
 }
 
 /// max number of elements in the history
-const MAX_LENGTH: usize = 3;
+const MAX_LENGTH: usize = 10;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Item {
@@ -49,14 +47,20 @@ impl Item {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct ClipsData {
+    pinned_clips: Vec<Item>,
+    mem_clips: Vec<Item>,
+}
+
 #[derive(Clone, Debug)]
-pub struct ClipStore {
+pub struct ClipsStore {
     clips: Vec<Item>,
 }
 
-impl ClipStore {
+impl ClipsStore {
     pub fn new() -> Self {
-        ClipStore { clips: Vec::new() }
+        ClipsStore { clips: Vec::new() }
     }
 
     pub fn save_clip(&mut self, value: &str) -> Item {
@@ -78,15 +82,19 @@ impl ClipStore {
         // TODO: properly handle results
         let clips = self.load_clips().expect("should return clips");
 
-        println!("id:{}, {:#?}", id, &self.clips);
-        clips.into_iter().find(|item| item.id == id)
+        let list = [clips.pinned_clips, clips.mem_clips].concat();
+
+        list.into_iter().find(|item| item.id == id)
     }
 
     /// checks if clip is already in store
     pub fn is_clipped(&mut self, value: &str) -> bool {
-        let clips = self.load_clips().unwrap_or_else(|_| Vec::new());
+        let clips = self.load_clips().expect("should return clips");
 
-        let existing = clips.into_iter().find(|item| item.value == value);
+        let existing = [clips.pinned_clips, clips.mem_clips]
+            .concat()
+            .into_iter()
+            .find(|item| item.value == value);
 
         existing.is_some()
     }
@@ -105,14 +113,17 @@ impl ClipStore {
         }
     }
 
-    pub fn load_clips(&mut self) -> std::io::Result<Vec<Item>> {
-        let pinned_clips = ClipStore::get_pinned_clips()?;
+    pub fn load_clips(&mut self) -> std::io::Result<ClipsData> {
+        let pinned_clips = ClipsStore::get_pinned_clips()?;
 
-        // self.clips.reverse();
+        let mut mem_clips = self.clips.clone();
 
-        let clips = [pinned_clips, self.clips.clone()].concat();
+        mem_clips.reverse();
 
-        Ok(clips)
+        Ok(ClipsData {
+            mem_clips,
+            pinned_clips,
+        })
     }
 
     pub fn clear_clips(&mut self) {

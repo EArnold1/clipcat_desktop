@@ -11,11 +11,14 @@ use store::Item;
 use services::board::write_clipboard;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{services::background::watcher, store::ClipStore};
+use crate::{
+    services::background::watcher,
+    store::{ClipsData, ClipsStore},
+};
 
 #[tauri::command]
-fn load_clips(app: AppHandle) -> Vec<Item> {
-    let store = app.state::<Arc<Mutex<ClipStore>>>();
+fn load_clips(app: AppHandle) -> ClipsData {
+    let store = app.state::<Arc<Mutex<ClipsStore>>>();
 
     let clips = store
         .lock()
@@ -24,36 +27,36 @@ fn load_clips(app: AppHandle) -> Vec<Item> {
         .unwrap_or_default();
 
     clips
-
-    // Emit error if loading clips returns one
 }
 
 #[tauri::command]
 fn copy_clip(app: AppHandle, id: String) {
-    let store: tauri::State<'_, Arc<Mutex<ClipStore>>> = app.state::<Arc<Mutex<ClipStore>>>();
+    let store: tauri::State<'_, Arc<Mutex<ClipsStore>>> = app.state::<Arc<Mutex<ClipsStore>>>();
 
     if let Some(Item { value, .. }) = store
         .lock()
         .expect("should get lock on store")
         .get_clip(&id)
     {
-        println!("copied: {}", &value);
         write_clipboard(&value)
     };
 }
 
 #[tauri::command]
 fn clear_clips(app: AppHandle) {
-    let store = app.state::<Arc<Mutex<ClipStore>>>();
+    let store = app.state::<Arc<Mutex<ClipsStore>>>();
 
-    store.lock().unwrap().clear_clips();
+    store
+        .lock()
+        .expect("should get lock on store")
+        .clear_clips();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            app.manage(Arc::new(Mutex::new(ClipStore::new()))); // TODO: Remove `Arc` as it is not needed
+            app.manage(Arc::new(Mutex::new(ClipsStore::new()))); // TODO: Remove `Arc` as it is not needed
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -61,7 +64,7 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app, event| {
-            let store = app.state::<Arc<Mutex<ClipStore>>>();
+            let store = app.state::<Arc<Mutex<ClipsStore>>>();
 
             // background task for when app is closed
             if let tauri::RunEvent::ExitRequested { api, .. } = &event {

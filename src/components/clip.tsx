@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { type ClipItem } from 'src/types/clip';
+import { ClipsData, type ClipItem } from 'src/types/clip';
 
 type TextItemProps = ClipItem;
 
@@ -75,14 +75,24 @@ export const TextItem = ({ value, id }: TextItemProps) => {
   );
 };
 
-export const Clips = ({ items }: { items: TextItemProps[] }) => (
-  <section className="mt-[98px] h-full">
-    {items.length ? (
-      items.map((item) => <TextItem {...item} key={item.id} />)
-    ) : (
-      <div className="p-6 text-center text-sm text-gray-500">
-        No clipboard history yet. Copy something to get started.
-      </div>
-    )}
-  </section>
-);
+export const Clips = ({ pinned_clips, mem_clips }: ClipsData) => {
+  const isEmpty = ![...pinned_clips, ...mem_clips].length;
+
+  return (
+    <section className="mt-[98px] h-full">
+      {pinned_clips.length
+        ? pinned_clips.map((item) => <TextItem {...item} key={item.id} />)
+        : null}
+
+      {mem_clips.length
+        ? mem_clips.map((item) => <TextItem {...item} key={item.id} />)
+        : null}
+
+      {isEmpty && (
+        <div className="p-6 text-center text-sm text-gray-500">
+          No clipboard history yet. Copy something to get started.
+        </div>
+      )}
+    </section>
+  );
+};

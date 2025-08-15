@@ -3,9 +3,9 @@ use std::sync::{Arc, Mutex};
 use std::{thread, time::Duration};
 
 use crate::services::board::read_clipboard;
-use crate::store::{ClipStore, Item};
+use crate::store::{ClipsStore, Item};
 
-pub fn watcher(sender: Option<Arc<Sender<Item>>>, store: Arc<Mutex<ClipStore>>) {
+pub fn watcher(sender: Option<Arc<Sender<Item>>>, store: Arc<Mutex<ClipsStore>>) {
     let tx_option = match sender {
         Some(transmitter) => Some(Arc::clone(&transmitter)),
         None => None,
