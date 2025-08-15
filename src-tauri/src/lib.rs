@@ -2,66 +2,88 @@ mod services;
 mod store;
 
 use std::{
-    sync::{mpsc, Arc},
+    sync::{mpsc, Arc, Mutex},
     thread,
 };
 
-use store::{get_item, list_items, Item};
+use store::Item;
 
 use services::board::write_clipboard;
-use tauri::Emitter;
+use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{services::background::watcher, store::clear_history};
+use crate::{services::background::watcher, store::ClipStore};
 
 #[tauri::command]
-fn load_clips() -> Vec<Item> {
-    let clips = list_items();
+fn load_clips(app: AppHandle) -> Vec<Item> {
+    let store = app.state::<Arc<Mutex<ClipStore>>>();
 
-    clips.unwrap_or_default()
+    let clips = store
+        .lock()
+        .expect("should get lock on store")
+        .load_clips()
+        .unwrap_or_default();
+
+    clips
 
     // Emit error if loading clips returns one
 }
 
 #[tauri::command]
-fn copy_clip(id: String) {
-    if let Ok(Some(Item { value, .. })) = get_item(&id) {
+fn copy_clip(app: AppHandle, id: String) {
+    let store: tauri::State<'_, Arc<Mutex<ClipStore>>> = app.state::<Arc<Mutex<ClipStore>>>();
+
+    if let Some(Item { value, .. }) = store
+        .lock()
+        .expect("should get lock on store")
+        .get_clip(&id)
+    {
+        println!("copied: {}", &value);
         write_clipboard(&value)
     };
 }
 
 #[tauri::command]
-fn clear_clips() {
-    if let Err(e) = clear_history() {
-        eprintln!("an error occurred while clearing clips :{:?}", e);
-    };
+fn clear_clips(app: AppHandle) {
+    let store = app.state::<Arc<Mutex<ClipStore>>>();
+
+    store.lock().unwrap().clear_clips();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            app.manage(Arc::new(Mutex::new(ClipStore::new()))); // TODO: Remove `Arc` as it is not needed
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![load_clips, copy_clip, clear_clips])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app, event| {
+            let store = app.state::<Arc<Mutex<ClipStore>>>();
+
             // background task for when app is closed
             if let tauri::RunEvent::ExitRequested { api, .. } = &event {
                 api.prevent_exit();
-                thread::spawn(|| {
-                    watcher(None);
+                let clip_store = Arc::clone(&store);
+
+                thread::spawn(move || {
+                    watcher(None, clip_store);
                 })
                 .join()
                 .expect("should join on the associated thread");
             }
 
             // background task for when app is loaded
-            if let tauri::RunEvent::Ready = &event {
+            if matches!(&event, tauri::RunEvent::Ready) {
                 let (tx, rx) = mpsc::channel();
 
                 let channel = Arc::new(tx);
                 let app_handle = app.clone();
+                let clip_store = Arc::clone(&store);
 
-                watcher(Some(Arc::clone(&channel)));
+                watcher(Some(Arc::clone(&channel)), clip_store);
 
                 // using a thread so it doesn't block the event loop and stop the ui from rendering
                 thread::spawn(move || {
