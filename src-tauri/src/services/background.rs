@@ -14,10 +14,12 @@ pub fn watcher(sender: Option<Arc<Sender<Item>>>, app_handle: AppHandle) {
     };
 
     thread::spawn(move || {
+        let delay = 5; // TODO: add settings file so this can be dynamic
+
         loop {
             if let Some(value) = read_clipboard() {
                 if value.trim().is_empty() {
-                    thread::sleep(Duration::from_secs(5)); // TODO: add settings file so this can be dynamic
+                    thread::sleep(Duration::from_secs(delay));
                     continue;
                 }
 
@@ -34,6 +36,8 @@ pub fn watcher(sender: Option<Arc<Sender<Item>>>, app_handle: AppHandle) {
                     }
                 }
             }
+
+            thread::sleep(Duration::from_secs(delay));
         }
     });
 }

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs};
+use std::{fmt::Debug, fs, io};
 
 use crate::services::board::clear_board;
 
@@ -78,13 +78,12 @@ impl ClipsStore {
         item
     }
 
-    pub fn get_clip(&mut self, id: &str) -> Option<Item> {
-        // TODO: properly handle results
-        let clips = self.load_clips().expect("should return clips");
+    pub fn get_clip(&mut self, id: &str) -> io::Result<Option<Item>> {
+        let clips = self.load_clips()?;
 
         let list = [clips.pinned_clips, clips.mem_clips].concat();
 
-        list.into_iter().find(|item| item.id == id)
+        Ok(list.into_iter().find(|item| item.id == id))
     }
 
     /// checks if clip is already in store
@@ -99,21 +98,7 @@ impl ClipsStore {
         existing.is_some()
     }
 
-    pub fn get_pinned_clips() -> std::io::Result<Vec<Item>> {
-        let file = fs::read("history.json").ok();
-
-        match file {
-            Some(buf) => {
-                let raw_json = String::from_utf8_lossy(&buf);
-                let mut parsed: Vec<Item> = serde_json::from_str(&raw_json)?;
-                parsed.reverse();
-                Ok(parsed)
-            }
-            None => Ok(Vec::new()),
-        }
-    }
-
-    pub fn load_clips(&mut self) -> std::io::Result<ClipsData> {
+    pub fn load_clips(&mut self) -> io::Result<ClipsData> {
         let pinned_clips = ClipsStore::get_pinned_clips()?;
 
         let mut mem_clips = self.clips.clone();
@@ -129,6 +114,20 @@ impl ClipsStore {
     pub fn clear_clips(&mut self) {
         clear_board();
         self.clips.clear();
+    }
+
+    pub fn get_pinned_clips() -> io::Result<Vec<Item>> {
+        let file = fs::read("history.json").ok();
+
+        match file {
+            Some(buf) => {
+                let raw_json = String::from_utf8_lossy(&buf);
+                let mut parsed: Vec<Item> = serde_json::from_str(&raw_json)?;
+                parsed.reverse();
+                Ok(parsed)
+            }
+            None => Ok(Vec::new()),
+        }
     }
 
     // pub fn search(&self, query: &str) -> std::io::Result<()> {

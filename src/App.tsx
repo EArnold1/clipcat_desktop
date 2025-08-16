@@ -20,6 +20,10 @@ function App() {
     handlePayload: handleEvent,
   });
 
+  // const { payload } = useTauriEventListener<string>({
+  //   eventName: 'error',
+  // });
+
   const loadClips = async () => {
     const clips = await invoke<ClipsData>('load_clips');
 
@@ -97,7 +101,7 @@ function App() {
             Clear All
           </button>
           <p className="text-gray-600">
-            Pinned: <span className="font-medium">1</span>
+            Pinned: <span className="font-medium">0</span>
           </p>
         </div>
       </section>
