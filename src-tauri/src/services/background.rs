@@ -1,13 +1,13 @@
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::{thread, time::Duration};
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager, RunEvent};
 
 use crate::services::board::read_clipboard;
 use crate::store::{ClipsStore, Item};
 
-pub fn watcher(sender: Option<Arc<Sender<Item>>>, app_handle: AppHandle) {
+fn watcher(sender: Option<Arc<Sender<Item>>>, app_handle: AppHandle) {
     let tx_option = match sender {
         Some(transmitter) => Some(Arc::clone(&transmitter)),
         None => None,
@@ -40,4 +40,40 @@ pub fn watcher(sender: Option<Arc<Sender<Item>>>, app_handle: AppHandle) {
             thread::sleep(Duration::from_secs(delay));
         }
     });
+}
+
+pub fn background_watcher(app_handle: &AppHandle, event: RunEvent) {
+    {
+        // background task for when UI is closed
+        if let tauri::RunEvent::ExitRequested { api, .. } = &event {
+            api.prevent_exit();
+
+            let app_clone = app_handle.clone();
+
+            thread::spawn(move || {
+                watcher(None, app_clone);
+            })
+            .join()
+            .expect("should join on the associated thread");
+        }
+    }
+
+    {
+        // background task for when app is loaded
+        if matches!(&event, tauri::RunEvent::Ready) {
+            let (tx, rx) = mpsc::channel();
+            let channel = Arc::new(tx);
+
+            watcher(Some(Arc::clone(&channel)), app_handle.clone());
+
+            // using a thread so it doesn't block the event loop and stop the ui from rendering
+            let handle = app_handle.clone();
+
+            thread::spawn(move || {
+                for value in rx {
+                    handle.emit("new_clip", value).expect("should emit event");
+                }
+            });
+        }
+    }
 }

@@ -2,21 +2,12 @@ mod services;
 mod store;
 mod utils;
 
-use std::{
-    sync::{mpsc, Arc, Mutex},
-    thread,
-};
-
+use services::{background::background_watcher, board::write_clipboard};
+use std::sync::Mutex;
 use store::Item;
-
-use services::board::write_clipboard;
-use tauri::{AppHandle, Emitter, Manager};
-
-use crate::{
-    services::background::watcher,
-    store::{ClipsData, ClipsStore},
-    utils::error::emit_error,
-};
+use store::{ClipsData, ClipsStore};
+use tauri::{AppHandle, Manager};
+use utils::error::emit_error;
 
 #[tauri::command]
 fn load_clips(app: AppHandle) -> ClipsData {
@@ -86,38 +77,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![load_clips, copy_clip, clear_clips])
         .build(tauri::generate_context!())
-        .expect("error while running tauri application")
-        .run(|app, event| {
-            // background task for when app is closed
-            if let tauri::RunEvent::ExitRequested { api, .. } = &event {
-                api.prevent_exit();
-
-                let app_clone = app.clone();
-
-                thread::spawn(move || {
-                    watcher(None, app_clone);
-                })
-                .join()
-                .expect("should join on the associated thread");
-            }
-
-            // background task for when app is loaded
-            if matches!(&event, tauri::RunEvent::Ready) {
-                let (tx, rx) = mpsc::channel();
-                let channel = Arc::new(tx);
-
-                watcher(Some(Arc::clone(&channel)), app.clone());
-
-                // using a thread so it doesn't block the event loop and stop the ui from rendering
-                let app_handle = app.clone();
-
-                thread::spawn(move || {
-                    for value in rx {
-                        app_handle
-                            .emit("new_clip", value)
-                            .expect("should emit event");
-                    }
-                });
-            }
-        });
+        .expect("error while running clipcat application")
+        .run(background_watcher);
 }
