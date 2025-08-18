@@ -2,14 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import 'src/App.css';
 import { Clips } from 'components/clip';
-import { type ClipItem } from 'src/types/clip';
+import { ClipsData, type ClipItem } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
-  const [items, setItems] = useState<Array<ClipItem>>([]);
+  const [items, setItems] = useState<ClipsData>({
+    pinned_clips: [],
+    mem_clips: [],
+  });
 
   const handleEvent = useCallback((payload: ClipItem) => {
-    setItems((prev) => [{ ...payload }, ...prev]);
+    setItems((prev) => ({ ...prev, mem_clips: [payload, ...prev.mem_clips] }));
   }, []);
 
   useTauriEventListener<ClipItem>({
@@ -17,18 +20,24 @@ function App() {
     handlePayload: handleEvent,
   });
 
+  // const { payload } = useTauriEventListener<string>({
+  //   eventName: 'error',
+  // });
+
   const loadClips = async () => {
-    const clips = await invoke<Array<ClipItem>>('load_clips');
+    const clips = await invoke<ClipsData>('load_clips');
 
     setItems(clips);
   };
 
   const clearClips = async () => {
-    await invoke<Array<ClipItem>>('clear_clips');
+    setItems((prev) => ({ ...prev, mem_clips: [] }));
+    await invoke('clear_clips');
     loadClips();
   };
 
   useEffect(() => {
+    // skipcq: JS-0098
     void loadClips();
   }, []);
 
@@ -72,7 +81,7 @@ function App() {
         {/* Controls & Info */}
         <div className="flex items-center px-4 py-2 gap-2 border-b border-gray-200 text-xs justify-between">
           <button
-            className="flex items-center gap-1 px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 border border-gray-300"
+            className="cursor-pointer flex items-center gap-1 px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 border border-gray-300"
             onClick={() => clearClips()}
           >
             <svg
@@ -92,14 +101,14 @@ function App() {
             Clear All
           </button>
           <p className="text-gray-600">
-            Pinned: <span className="font-medium">1</span>
+            Pinned: <span className="font-medium">0</span>
           </p>
         </div>
       </section>
 
       {/* List */}
 
-      <Clips items={items} />
+      <Clips {...items} />
     </main>
   );
 }
