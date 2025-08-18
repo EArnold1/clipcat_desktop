@@ -3,9 +3,14 @@ type ClipItem = {
   value: string;
 };
 
+type TextClip = { Text: ClipItem };
+type ImageClip = { Image: { path: string } };
+
+type Clip = TextClip | ImageClip;
+
 type ClipsData = {
-  pinned_clips: ClipItem[];
-  mem_clips: ClipItem[];
+  pinned_clips: Clip[];
+  mem_clips: Clip[];
 };
 
-export { type ClipItem, type ClipsData };
+export { type Clip, type ClipsData, type TextClip, type ImageClip };

@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, fs, io};
 
-use crate::services::board::clear_board;
+use crate::{
+    services::board::clear_board,
+    store::generator::{generate_id, generate_path},
+};
 
 mod generator {
     use rand::{distr::Alphanumeric, Rng};
@@ -27,35 +30,52 @@ mod generator {
     pub fn generate_id() -> String {
         unique_string(Some(5))
     }
+
+    pub fn generate_path() -> String {
+        format!("{}.jpeg", unique_string(Some(7)))
+    }
 }
 
 /// max number of elements in the history
 const MAX_LENGTH: usize = 10;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Item {
-    id: String,
-    pub value: String,
+pub enum Clip {
+    Image { path: String },
+    Text { id: String, value: String },
 }
 
-impl Item {
-    fn new(value: String) -> Self {
-        Item {
-            id: generator::generate_id(),
+impl Clip {
+    pub fn new_image() -> Self {
+        Clip::Image {
+            path: generate_path(),
+        }
+    }
+
+    pub fn new_text(value: String) -> Self {
+        Clip::Text {
+            id: generate_id(),
             value,
+        }
+    }
+
+    fn compare_clip(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Clip::Text { value, .. }, Clip::Text { value: content, .. }) => value == content,
+            _ => false,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ClipsData {
-    pinned_clips: Vec<Item>,
-    mem_clips: Vec<Item>,
+    pinned_clips: Vec<Clip>,
+    mem_clips: Vec<Clip>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ClipsStore {
-    clips: Vec<Item>,
+    clips: Vec<Clip>,
 }
 
 impl ClipsStore {
@@ -63,7 +83,7 @@ impl ClipsStore {
         ClipsStore { clips: Vec::new() }
     }
 
-    pub fn save_clip(&mut self, value: &str) -> Item {
+    pub fn save_clip(&mut self, clip: Clip) -> Clip {
         let clips = &mut self.clips;
 
         if clips.len() >= MAX_LENGTH {
@@ -71,29 +91,30 @@ impl ClipsStore {
             clips.remove(0);
         };
 
-        let item = Item::new(value.into());
+        clips.push(clip.clone());
 
-        clips.push(item.clone());
-
-        item
+        clip
     }
 
-    pub fn get_clip(&mut self, id: &str) -> io::Result<Option<Item>> {
+    pub fn get_clip(&mut self, clip_id: &str) -> io::Result<Option<Clip>> {
         let clips = self.load_clips()?;
 
         let list = [clips.pinned_clips, clips.mem_clips].concat();
 
-        Ok(list.into_iter().find(|item| item.id == id))
+        Ok(list.into_iter().find(|clip| match clip {
+            Clip::Image { path } => clip_id == path, // for images the path is used as id
+            Clip::Text { id, .. } => clip_id == id,
+        }))
     }
 
     /// checks if clip is already in store
-    pub fn is_clipped(&mut self, value: &str) -> bool {
+    pub fn is_clipped(&mut self, new_clip: &Clip) -> bool {
         let clips = self.load_clips().expect("should return clips");
 
         let existing = [clips.pinned_clips, clips.mem_clips]
             .concat()
             .into_iter()
-            .find(|item| item.value == value);
+            .find(|clip| clip.compare_clip(new_clip));
 
         existing.is_some()
     }
@@ -116,13 +137,13 @@ impl ClipsStore {
         self.clips.clear();
     }
 
-    pub fn get_pinned_clips() -> io::Result<Vec<Item>> {
+    pub fn get_pinned_clips() -> io::Result<Vec<Clip>> {
         let file = fs::read("history.json").ok();
 
         match file {
             Some(buf) => {
                 let raw_json = String::from_utf8_lossy(&buf);
-                let mut parsed: Vec<Item> = serde_json::from_str(&raw_json)?;
+                let mut parsed: Vec<Clip> = serde_json::from_str(&raw_json)?;
                 parsed.reverse();
                 Ok(parsed)
             }

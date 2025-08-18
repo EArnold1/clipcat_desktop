@@ -4,7 +4,6 @@ mod utils;
 
 use services::{background::background_watcher, board::write_clipboard};
 use std::sync::Mutex;
-use store::Item;
 use store::{ClipsData, ClipsStore};
 use tauri::{AppHandle, Manager};
 use utils::error::emit_error;
@@ -43,8 +42,8 @@ fn copy_clip(app: AppHandle, id: String) {
 
     if let Ok(mut lock) = store.lock() {
         match lock.get_clip(&id) {
-            Ok(Some(Item { value, .. })) => {
-                write_clipboard(&value);
+            Ok(Some(clip)) => {
+                write_clipboard(clip);
             }
             Err(e) => {
                 // emit error
