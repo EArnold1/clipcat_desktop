@@ -1,5 +1,6 @@
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 use std::{thread, time::Duration};
 
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
@@ -17,7 +18,9 @@ fn watcher(sender: Option<Arc<Sender<Clip>>>, app_handle: AppHandle) {
         let delay = 5; // TODO: add settings file so this can be dynamic
 
         loop {
-            if let Some(clip) = read_clipboard() {
+            let (incoming_clip, image) = read_clipboard();
+
+            if let Some(clip) = incoming_clip {
                 if let Clip::Text { value, .. } = &clip {
                     if value.trim().is_empty() {
                         thread::sleep(Duration::from_secs(delay));
@@ -28,7 +31,8 @@ fn watcher(sender: Option<Arc<Sender<Clip>>>, app_handle: AppHandle) {
                 let store_lock = app_handle.state::<Mutex<ClipsStore>>();
                 let mut clip_store = store_lock.lock().expect("should acquire lock on store");
 
-                if !clip_store.is_clipped(&clip) {
+                if !clip_store.is_clipped(&clip, image) {
+                    let start = Instant::now();
                     let item = clip_store.save_clip(clip);
                     if let Some(tx) = tx_option.as_ref() {
                         if let Err(e) = tx.send(item) {
@@ -36,6 +40,11 @@ fn watcher(sender: Option<Arc<Sender<Clip>>>, app_handle: AppHandle) {
                             break; // this stops the entire process
                         }
                     }
+                    let elapsed = start.elapsed();
+
+                    println!("time :{:?}", elapsed);
+                } else {
+                    thread::sleep(Duration::from_secs(delay));
                 }
             }
 
@@ -43,26 +52,6 @@ fn watcher(sender: Option<Arc<Sender<Clip>>>, app_handle: AppHandle) {
         }
     });
 }
-
-// fn process_clip(clip: Clip) {
-// let store_lock = app_handle.state::<Mutex<ClipsStore>>();
-// let mut clip_store = store_lock.lock().expect("should acquire lock on store");
-
-//     match &clip {
-//         Clip::Text {value , ..}=> {
-//             if !clip_store.is_clipped(&value) {
-//                 let item = clip_store.save_clip(clip);
-//                 if let Some(tx) = tx_option.as_ref() {
-//                     if let Err(e) = tx.send(item) {
-//                         eprintln!("an error occurred: {:?}", e); // FIXME: update error message and handle properly
-//                         // break ''; // this stops the entire process
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-// }
 
 pub fn background_watcher(app_handle: &AppHandle, event: RunEvent) {
     {

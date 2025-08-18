@@ -8,6 +8,8 @@ use store::{ClipsData, ClipsStore};
 use tauri::{AppHandle, Manager};
 use utils::error::emit_error;
 
+use crate::store::Clip;
+
 #[tauri::command]
 fn load_clips(app: AppHandle) -> ClipsData {
     let store = app.state::<Mutex<ClipsStore>>();
@@ -43,6 +45,9 @@ fn copy_clip(app: AppHandle, id: String) {
     if let Ok(mut lock) = store.lock() {
         match lock.get_clip(&id) {
             Ok(Some(clip)) => {
+                if let Clip::Image { path } = &clip {
+                    lock.set_last_clipped_path(path.clone());
+                }
                 write_clipboard(clip);
             }
             Err(e) => {

@@ -1,25 +1,22 @@
 use arboard::{Clipboard, ImageData};
-use image::{DynamicImage, ImageBuffer, ImageFormat, RgbaImage};
+use image::{DynamicImage, ImageBuffer, RgbImage, RgbaImage};
 
 use crate::store::Clip;
 
-pub fn read_clipboard() -> Option<Clip> {
-    let mut clipboard = Clipboard::new().ok()?;
+pub fn read_clipboard() -> (Option<Clip>, Option<RgbImage>) {
+    let mut clipboard = Clipboard::new().expect("should create an instance of the clipboard");
 
-    if let Ok(value) = clipboard.get_text() {
-        let clip = Clip::new_text(value);
-        Some(clip)
-    } else if let Ok(image) = clipboard.get_image() {
+    if let Ok(image) = clipboard.get_image() {
         // process image
         let clip = Clip::new_image();
 
-        if let Clip::Image { path } = &clip {
-            read_image(image, path)
-        };
-        clear_board(); // FIXME
-        Some(clip)
+        (Some(clip), Some(read_image(image)))
+    } else if let Ok(value) = clipboard.get_text() {
+        let clip = Clip::new_text(value);
+
+        (Some(clip), None)
     } else {
-        None
+        (None, None)
     }
 }
 
@@ -44,7 +41,7 @@ pub fn clear_board() {
     clipboard.clear().expect("should clear clipboard");
 }
 
-pub fn read_image(image: ImageData, path: &str) {
+pub fn read_image(image: ImageData) -> RgbImage {
     let ImageData {
         height,
         width,
@@ -54,10 +51,7 @@ pub fn read_image(image: ImageData, path: &str) {
     let rgba: RgbaImage =
         ImageBuffer::from_raw(width as u32, height as u32, bytes.into_owned()).unwrap();
 
-    let rgb_image = DynamicImage::ImageRgba8(rgba).into_rgb8();
-    rgb_image
-        .save_with_format(format!("images/{}", path), ImageFormat::Jpeg)
-        .expect("should save file"); // TODO: properly handle error
+    DynamicImage::ImageRgba8(rgba).into_rgb8()
 }
 
 fn write_image(clipboard: &mut Clipboard, path: &str) {

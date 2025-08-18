@@ -1,9 +1,11 @@
+use image::RgbImage;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, io};
+use std::{fmt::Debug, fs, io, thread};
 
 use crate::{
     services::board::clear_board,
     store::generator::{generate_id, generate_path},
+    utils::image::{compare_image, save_image},
 };
 
 mod generator {
@@ -76,11 +78,16 @@ pub struct ClipsData {
 #[derive(Clone, Debug)]
 pub struct ClipsStore {
     clips: Vec<Clip>,
+    // write checks to make sure last clipped image path is properly updated
+    last_clipped_image: Option<String>,
 }
 
 impl ClipsStore {
     pub fn new() -> Self {
-        ClipsStore { clips: Vec::new() }
+        ClipsStore {
+            clips: Vec::new(),
+            last_clipped_image: None,
+        }
     }
 
     pub fn save_clip(&mut self, clip: Clip) -> Clip {
@@ -89,6 +96,10 @@ impl ClipsStore {
         if clips.len() >= MAX_LENGTH {
             // remove item when list is equal to max length
             clips.remove(0);
+        };
+
+        if let Clip::Image { path } = &clip {
+            self.last_clipped_image = Some(path.clone());
         };
 
         clips.push(clip.clone());
@@ -102,21 +113,48 @@ impl ClipsStore {
         let list = [clips.pinned_clips, clips.mem_clips].concat();
 
         Ok(list.into_iter().find(|clip| match clip {
-            Clip::Image { path } => clip_id == path, // for images the path is used as id
+            Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
             Clip::Text { id, .. } => clip_id == id,
         }))
     }
 
-    /// checks if clip is already in store
-    pub fn is_clipped(&mut self, new_clip: &Clip) -> bool {
-        let clips = self.load_clips().expect("should return clips");
+    fn check_and_save_image(&mut self, path: String, image: Option<RgbImage>) -> bool {
+        let Some(img) = image else {
+            return false;
+        };
 
-        let existing = [clips.pinned_clips, clips.mem_clips]
-            .concat()
+        if let Some(last_path) = &self.last_clipped_image {
+            if compare_image(last_path, &img) {
+                return true;
+            }
+        }
+
+        thread::spawn(move || {
+            save_image(img, &path);
+        });
+
+        false
+    }
+
+    fn check_text_clip(&mut self, new_clip: &Clip) -> bool {
+        let clips = self.load_clips().expect("failed to load clips");
+
+        clips
+            .pinned_clips
             .into_iter()
-            .find(|clip| clip.compare_clip(new_clip));
+            .chain(clips.mem_clips)
+            .any(|clip| clip.compare_clip(new_clip))
+    }
 
-        existing.is_some()
+    /// Checks if a clip is already in the store.
+    /// For images, compares against last clipped image, and saves if it's new.
+    /// While for texts, it checks if the value already exists in pinned or memory clips.
+    pub fn is_clipped(&mut self, new_clip: &Clip, image: Option<RgbImage>) -> bool {
+        if let Clip::Image { path } = new_clip {
+            return self.check_and_save_image(path.clone(), image);
+        }
+
+        self.check_text_clip(new_clip)
     }
 
     pub fn load_clips(&mut self) -> io::Result<ClipsData> {
@@ -149,6 +187,10 @@ impl ClipsStore {
             }
             None => Ok(Vec::new()),
         }
+    }
+
+    pub fn set_last_clipped_path(&mut self, path: String) {
+        self.last_clipped_image = Some(path);
     }
 
     // pub fn search(&self, query: &str) -> std::io::Result<()> {
