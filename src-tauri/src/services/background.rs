@@ -1,6 +1,5 @@
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 use std::{thread, time::Duration};
 
 use tauri::{AppHandle, Emitter, Manager, RunEvent};
@@ -32,7 +31,6 @@ fn watcher(sender: Option<Arc<Sender<Clip>>>, app_handle: AppHandle) {
                 let mut clip_store = store_lock.lock().expect("should acquire lock on store");
 
                 if !clip_store.is_clipped(&clip, image) {
-                    let start = Instant::now();
                     let item = clip_store.save_clip(clip);
                     if let Some(tx) = tx_option.as_ref() {
                         if let Err(e) = tx.send(item) {
@@ -40,11 +38,6 @@ fn watcher(sender: Option<Arc<Sender<Clip>>>, app_handle: AppHandle) {
                             break; // this stops the entire process
                         }
                     }
-                    let elapsed = start.elapsed();
-
-                    println!("time :{:?}", elapsed);
-                } else {
-                    thread::sleep(Duration::from_secs(delay));
                 }
             }
 
