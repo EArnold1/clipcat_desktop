@@ -1,6 +1,7 @@
-import { invoke } from '@tauri-apps/api/core';
-import { useCallback } from 'react';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { useCallback, useEffect, useState } from 'react';
 import { Clip, ImageClip, type TextClip } from 'src/types/clip';
+import { appDataDir, join } from '@tauri-apps/api/path';
 
 type TextClipProps = TextClip & {
   handleCopy: (id: string) => Promise<void>;
@@ -30,7 +31,7 @@ const TextItem = ({ Text: { id, value }, handleCopy }: TextClipProps) => {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[13px] text-gray-900 line-clamp-2">{value}</p>
-        <div className="text-[11px] text-gray-500 mt-1">Text ·</div>
+        <p className="text-[11px] text-gray-500 mt-1">Text ·</p>
       </div>
       <div className="flex gap-2">
         <button
@@ -79,6 +80,23 @@ type ImageClipProps = ImageClip & {
 };
 
 const ImageItem = ({ Image: { path }, handleCopy }: ImageClipProps) => {
+  const [assetUrl, setAssetUrl] = useState<string | null>(null);
+  const loadSrc = async () => {
+    const appDataDirPath = await appDataDir();
+
+    const filePath = await join(appDataDirPath, `images/${path}`);
+
+    const assetUrl = convertFileSrc(filePath);
+
+    setAssetUrl(assetUrl);
+  };
+
+  useEffect(() => {
+    loadSrc();
+  }, []);
+
+  if (!assetUrl) return null;
+
   return (
     <div
       className="flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
@@ -91,18 +109,30 @@ const ImageItem = ({ Image: { path }, handleCopy }: ImageClipProps) => {
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="size-4 text-indigo-600"
+          className="size-5 text-pink-600"
         >
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+            d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
           />
         </svg>
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-gray-900 line-clamp-2">{path}</p>
-        <div className="text-[11px] text-gray-500 mt-1">Image ·</div>
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        <div className="grid grid-cols-1 gap-2">
+          <div className="bg-gray-100 rounded-md overflow-hidden">
+            <img
+              src={assetUrl}
+              alt="Screenshot preview"
+              className="w-full object-cover rounded"
+            />
+          </div>
+          <div>
+            <div className="text-[11px] text-gray-500 mt-0.5 flex flex-wrap gap-2">
+              <span>Image .</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div className="flex gap-2">
         <button

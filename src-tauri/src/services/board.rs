@@ -1,7 +1,7 @@
 use arboard::{Clipboard, ImageData};
 use image::{DynamicImage, ImageBuffer, RgbImage, RgbaImage};
 
-use crate::store::Clip;
+use crate::{store::Clip, utils::image::app_image_dir};
 
 pub fn read_clipboard() -> (Option<Clip>, Option<RgbImage>) {
     let mut clipboard = Clipboard::new().expect("should create an instance of the clipboard");
@@ -55,7 +55,7 @@ pub fn read_image(image: ImageData) -> RgbImage {
 }
 
 fn write_image(clipboard: &mut Clipboard, path: &str) {
-    let dyn_img: DynamicImage = image::open(format!("images/{}", path)).expect("should open image");
+    let dyn_img: DynamicImage = image::open(app_image_dir(path)).expect("should find image");
 
     // convert to RGBA8 pixel format
     let rgba: RgbaImage = dyn_img.to_rgba8();
