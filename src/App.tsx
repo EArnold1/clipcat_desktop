@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import 'src/App.css';
 import { Clips } from 'components/clip';
-import { ClipsData, type ClipItem } from 'src/types/clip';
+import { ClipsData, type Clip } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
@@ -11,11 +11,11 @@ function App() {
     mem_clips: [],
   });
 
-  const handleEvent = useCallback((payload: ClipItem) => {
+  const handleEvent = useCallback((payload: Clip) => {
     setItems((prev) => ({ ...prev, mem_clips: [payload, ...prev.mem_clips] }));
   }, []);
 
-  useTauriEventListener<ClipItem>({
+  useTauriEventListener<Clip>({
     eventName: 'new_clip',
     handlePayload: handleEvent,
   });
@@ -35,6 +35,11 @@ function App() {
     await invoke('clear_clips');
     loadClips();
   };
+
+  const handleClearClips = useCallback(() => {
+    // skipcq: JS-0098
+    void clearClips();
+  }, [clearClips]);
 
   useEffect(() => {
     // skipcq: JS-0098
@@ -82,7 +87,7 @@ function App() {
         <div className="flex items-center px-4 py-2 gap-2 border-b border-gray-200 text-xs justify-between">
           <button
             className="cursor-pointer flex items-center gap-1 px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 border border-gray-300"
-            onClick={() => clearClips()}
+            onClick={handleClearClips}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
