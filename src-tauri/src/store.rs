@@ -5,7 +5,7 @@ use std::{fmt::Debug, fs, io, path::PathBuf, thread};
 use crate::{
     services::board::clear_board,
     store::generator::{generate_id, generate_path},
-    utils::image::{clear_images, compare_image, save_image},
+    utils::image::{clear_images, image_match, remove_image, save_image},
 };
 
 mod generator {
@@ -61,7 +61,7 @@ impl Clip {
         }
     }
 
-    fn compare_clip(&self, other: &Self) -> bool {
+    fn compare_text_clip(&self, other: &Self) -> bool {
         match (self, other) {
             (Clip::Text { value, .. }, Clip::Text { value: content, .. }) => value == content,
             _ => false,
@@ -95,7 +95,11 @@ impl ClipsStore {
 
         if clips.len() >= MAX_LENGTH {
             // remove item when list is equal to max length
-            clips.remove(0);
+            let clip = &clips.remove(0);
+
+            if let Clip::Image { path } = clip {
+                remove_image(PathBuf::from(path));
+            }
         };
 
         if let Clip::Image { path } = &clip {
@@ -124,7 +128,7 @@ impl ClipsStore {
         };
 
         if let Some(last_path) = &self.last_clipped_image {
-            if compare_image(last_path, &img) {
+            if image_match(last_path, &img) {
                 return true;
             }
         }
@@ -143,7 +147,7 @@ impl ClipsStore {
             .pinned_clips
             .into_iter()
             .chain(clips.mem_clips)
-            .any(|clip| clip.compare_clip(new_clip))
+            .any(|clip| clip.compare_text_clip(new_clip))
     }
 
     /// Checks if a clip is already in the store.

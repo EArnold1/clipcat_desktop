@@ -7,7 +7,7 @@ const IMAGE_DISTANCE_THRESHOLD: u32 = 10;
 
 /// function to compare images by hash
 /// using `10` as the distance threshold
-pub fn compare_image(last_clipped_path: &str, new_clip_data: &RgbImage) -> bool {
+pub fn image_match(last_clipped_path: &str, new_clip_data: &RgbImage) -> bool {
     let hasher = HasherConfig::new().to_hasher();
 
     let img_one = image::open(clip_image_path(last_clipped_path)).expect("last image should exist");
@@ -67,5 +67,15 @@ pub fn clear_images(paths: &[PathBuf]) {
                 eprintln!("failed to remove file {:?}: {}", path, e);
             }
         }
+    }
+}
+
+pub fn remove_image(path: PathBuf) {
+    let mut image_dir = app_image_dir();
+
+    image_dir.push(path);
+
+    if let Err(e) = fs::remove_file(&image_dir) {
+        eprintln!("failed to remove file {:?}: {}", image_dir, e);
     }
 }
