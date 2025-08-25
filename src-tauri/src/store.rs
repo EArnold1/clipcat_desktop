@@ -1,11 +1,11 @@
 use image::RgbImage;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, io, thread};
+use std::{fmt::Debug, fs, io, path::PathBuf, thread};
 
 use crate::{
     services::board::clear_board,
     store::generator::{generate_id, generate_path},
-    utils::image::{compare_image, save_image},
+    utils::image::{clear_images, compare_image, save_image},
 };
 
 mod generator {
@@ -170,9 +170,28 @@ impl ClipsStore {
         })
     }
 
+    /// remove saved images that are no longer in clips store
+    pub fn remove_images(&self) {
+        let image_paths = self
+            .clips // mem clips & pinned clips
+            .iter()
+            .filter_map(|clip| {
+                if let Clip::Image { path } = clip {
+                    Some(PathBuf::from(path))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<PathBuf>>();
+
+        clear_images(&image_paths); // spawn thread?
+    }
+
     pub fn clear_clips(&mut self) {
         clear_board();
         self.clips.clear();
+        self.last_clipped_image = None;
+        self.remove_images();
     }
 
     pub fn get_pinned_clips() -> io::Result<Vec<Clip>> {

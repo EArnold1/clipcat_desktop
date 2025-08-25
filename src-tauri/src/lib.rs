@@ -74,7 +74,9 @@ fn clear_clips(app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            app.manage(Mutex::new(ClipsStore::new()));
+            let store = ClipsStore::new();
+            store.remove_images(); // to avoid deleting incoming image on clipboard
+            app.manage(Mutex::new(store));
 
             Ok(())
         })
