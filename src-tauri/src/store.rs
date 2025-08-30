@@ -1,7 +1,12 @@
+use image::RgbImage;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, io};
+use std::{fmt::Debug, fs, io, path::PathBuf, thread};
 
-use crate::services::board::clear_board;
+use crate::{
+    services::board::clear_board,
+    store::generator::{generate_id, generate_path},
+    utils::image::{clear_images, image_match, remove_image, save_image},
+};
 
 mod generator {
     use rand::{distr::Alphanumeric, Rng};
@@ -27,75 +32,133 @@ mod generator {
     pub fn generate_id() -> String {
         unique_string(Some(5))
     }
+
+    pub fn generate_path() -> String {
+        format!("{}.jpeg", unique_string(Some(7)))
+    }
 }
 
 /// max number of elements in the history
 const MAX_LENGTH: usize = 10;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Item {
-    id: String,
-    pub value: String,
+pub enum Clip {
+    Image { path: String },
+    Text { id: String, value: String },
 }
 
-impl Item {
-    fn new(value: String) -> Self {
-        Item {
-            id: generator::generate_id(),
+impl Clip {
+    pub fn new_image() -> Self {
+        Clip::Image {
+            path: generate_path(),
+        }
+    }
+
+    pub fn new_text(value: String) -> Self {
+        Clip::Text {
+            id: generate_id(),
             value,
+        }
+    }
+
+    fn compare_text_clip(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Clip::Text { value, .. }, Clip::Text { value: content, .. }) => value == content,
+            _ => false,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct ClipsData {
-    pinned_clips: Vec<Item>,
-    mem_clips: Vec<Item>,
+    pinned_clips: Vec<Clip>,
+    mem_clips: Vec<Clip>,
 }
 
 #[derive(Clone, Debug)]
 pub struct ClipsStore {
-    clips: Vec<Item>,
+    clips: Vec<Clip>,
+    // write checks to make sure last clipped image path is properly updated
+    last_clipped_image: Option<String>,
 }
 
 impl ClipsStore {
     pub fn new() -> Self {
-        ClipsStore { clips: Vec::new() }
+        ClipsStore {
+            clips: Vec::new(),
+            last_clipped_image: None,
+        }
     }
 
-    pub fn save_clip(&mut self, value: &str) -> Item {
+    pub fn save_clip(&mut self, clip: Clip) -> Clip {
         let clips = &mut self.clips;
 
         if clips.len() >= MAX_LENGTH {
             // remove item when list is equal to max length
-            clips.remove(0);
+            let clip = &clips.remove(0);
+
+            if let Clip::Image { path } = clip {
+                remove_image(PathBuf::from(path));
+            }
         };
 
-        let item = Item::new(value.into());
+        if let Clip::Image { path } = &clip {
+            self.last_clipped_image = Some(path.clone());
+        };
 
-        clips.push(item.clone());
+        clips.push(clip.clone());
 
-        item
+        clip
     }
 
-    pub fn get_clip(&mut self, id: &str) -> io::Result<Option<Item>> {
+    pub fn get_clip(&mut self, clip_id: &str) -> io::Result<Option<Clip>> {
         let clips = self.load_clips()?;
 
         let list = [clips.pinned_clips, clips.mem_clips].concat();
 
-        Ok(list.into_iter().find(|item| item.id == id))
+        Ok(list.into_iter().find(|clip| match clip {
+            Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
+            Clip::Text { id, .. } => clip_id == id,
+        }))
     }
 
-    /// checks if clip is already in store
-    pub fn is_clipped(&mut self, value: &str) -> bool {
-        let clips = self.load_clips().expect("should return clips");
+    fn check_and_save_image(&mut self, path: String, image: Option<RgbImage>) -> bool {
+        let Some(img) = image else {
+            return false;
+        };
 
-        let existing = [clips.pinned_clips, clips.mem_clips]
-            .concat()
+        if let Some(last_path) = &self.last_clipped_image {
+            if image_match(last_path, &img) {
+                return true;
+            }
+        }
+
+        thread::spawn(move || {
+            save_image(img, &path);
+        });
+
+        false
+    }
+
+    fn check_text_clip(&mut self, new_clip: &Clip) -> bool {
+        let clips = self.load_clips().expect("failed to load clips");
+
+        clips
+            .pinned_clips
             .into_iter()
-            .find(|item| item.value == value);
+            .chain(clips.mem_clips)
+            .any(|clip| clip.compare_text_clip(new_clip))
+    }
 
-        existing.is_some()
+    /// Checks if a clip is already in the store.
+    /// For images, compares against last clipped image, and saves if it's new.
+    /// While for texts, it checks if the value already exists in pinned or memory clips.
+    pub fn is_clipped(&mut self, new_clip: &Clip, image: Option<RgbImage>) -> bool {
+        if let Clip::Image { path } = new_clip {
+            return self.check_and_save_image(path.clone(), image);
+        }
+
+        self.check_text_clip(new_clip)
     }
 
     pub fn load_clips(&mut self) -> io::Result<ClipsData> {
@@ -111,23 +174,46 @@ impl ClipsStore {
         })
     }
 
+    /// remove saved images that are no longer in clips store
+    pub fn remove_images(&self) {
+        let image_paths = self
+            .clips // mem clips & pinned clips
+            .iter()
+            .filter_map(|clip| {
+                if let Clip::Image { path } = clip {
+                    Some(PathBuf::from(path))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<PathBuf>>();
+
+        clear_images(&image_paths); // spawn thread?
+    }
+
     pub fn clear_clips(&mut self) {
         clear_board();
         self.clips.clear();
+        self.last_clipped_image = None;
+        self.remove_images();
     }
 
-    pub fn get_pinned_clips() -> io::Result<Vec<Item>> {
+    pub fn get_pinned_clips() -> io::Result<Vec<Clip>> {
         let file = fs::read("history.json").ok();
 
         match file {
             Some(buf) => {
                 let raw_json = String::from_utf8_lossy(&buf);
-                let mut parsed: Vec<Item> = serde_json::from_str(&raw_json)?;
+                let mut parsed: Vec<Clip> = serde_json::from_str(&raw_json)?;
                 parsed.reverse();
                 Ok(parsed)
             }
             None => Ok(Vec::new()),
         }
+    }
+
+    pub fn set_last_clipped_path(&mut self, path: String) {
+        self.last_clipped_image = Some(path);
     }
 
     // pub fn search(&self, query: &str) -> std::io::Result<()> {

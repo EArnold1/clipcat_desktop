@@ -4,10 +4,11 @@ mod utils;
 
 use services::{background::background_watcher, board::write_clipboard};
 use std::sync::Mutex;
-use store::Item;
 use store::{ClipsData, ClipsStore};
 use tauri::{AppHandle, Manager};
 use utils::error::emit_error;
+
+use crate::store::Clip;
 
 #[tauri::command]
 fn load_clips(app: AppHandle) -> ClipsData {
@@ -43,8 +44,11 @@ fn copy_clip(app: AppHandle, id: String) {
 
     if let Ok(mut lock) = store.lock() {
         match lock.get_clip(&id) {
-            Ok(Some(Item { value, .. })) => {
-                write_clipboard(&value);
+            Ok(Some(clip)) => {
+                if let Clip::Image { path } = &clip {
+                    lock.set_last_clipped_path(path.clone());
+                }
+                write_clipboard(clip);
             }
             Err(e) => {
                 // emit error
@@ -70,7 +74,9 @@ fn clear_clips(app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            app.manage(Mutex::new(ClipsStore::new()));
+            let store = ClipsStore::new();
+            store.remove_images(); // to avoid deleting incoming image on clipboard
+            app.manage(Mutex::new(store));
 
             Ok(())
         })
