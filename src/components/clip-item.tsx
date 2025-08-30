@@ -1,18 +1,19 @@
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { useCallback, useEffect, useState } from 'react';
-import { Clip, ImageClip, PinFn, type TextClip } from 'src/types/clip';
+import { Clip, ImageClip, ClipFns, type TextClip } from 'src/types/clip';
 import { appDataDir, join } from '@tauri-apps/api/path';
 
 type TextClipProps = TextClip & {
   handleCopy: (id: string) => Promise<void>;
   isPinned?: boolean;
-} & PinFn;
+} & ClipFns;
 
 const TextItem = ({
   Text: { id, value },
   isPinned,
   handleCopy,
   handlePin,
+  handleDelete,
 }: TextClipProps) => {
   return (
     <div
@@ -76,7 +77,11 @@ const TextItem = ({
           )}
         </button>
         {!isPinned && (
-          <button aria-label="Delete" className="p-1 rounded hover:bg-gray-100">
+          <button
+            aria-label="Delete"
+            className="p-1 rounded hover:bg-gray-100"
+            onClick={() => handleDelete?.(id)}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -101,13 +106,14 @@ const TextItem = ({
 type ImageClipProps = ImageClip & {
   isPinned?: boolean;
   handleCopy: (id: string) => Promise<void>;
-} & PinFn;
+} & ClipFns;
 
 const ImageItem = ({
   Image: { path },
   isPinned,
   handleCopy,
   handlePin,
+  handleDelete,
 }: ImageClipProps) => {
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
   const loadSrc = async () => {
@@ -201,7 +207,11 @@ const ImageItem = ({
         </button>
 
         {!isPinned && (
-          <button aria-label="Delete" className="p-1 rounded hover:bg-gray-100">
+          <button
+            aria-label="Delete"
+            className="p-1 rounded hover:bg-gray-100"
+            onClick={() => handleDelete?.(path)}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -226,9 +236,14 @@ const ImageItem = ({
 type Props = {
   clip: Clip;
   isPinned?: boolean;
-} & PinFn;
+} & ClipFns;
 
-export const ClipItem = ({ clip, isPinned, handlePin }: Props) => {
+export const ClipItem = ({
+  clip,
+  isPinned,
+  handlePin,
+  handleDelete,
+}: Props) => {
   const handleCopy = useCallback(async (id: string) => {
     await invoke('copy_clip', { id });
   }, []);
@@ -240,6 +255,7 @@ export const ClipItem = ({ clip, isPinned, handlePin }: Props) => {
         isPinned={isPinned}
         handleCopy={handleCopy}
         handlePin={handlePin}
+        handleDelete={handleDelete}
       />
     );
 
@@ -249,6 +265,7 @@ export const ClipItem = ({ clip, isPinned, handlePin }: Props) => {
       isPinned={isPinned}
       handleCopy={handleCopy}
       handlePin={handlePin}
+      handleDelete={handleDelete}
     />
   );
 };

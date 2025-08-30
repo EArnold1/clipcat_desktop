@@ -260,20 +260,21 @@ impl ClipsStore {
             return;
         }
 
-        if let Some((index, clip)) = self.clips.iter().enumerate().find(|(_, clip)| match clip {
+        if let Some(index) = self.clips.iter().position(|clip| match clip {
             Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
             Clip::Text { id, .. } => clip_id == id,
         }) {
+            let clip = self.clips.remove(index);
+
             pinned_clips.reverse();
 
-            pinned_clips.push(clip.clone());
-
-            self.clips.remove(index);
+            pinned_clips.push(clip);
 
             let serialized: String = serde_json::to_string(&pinned_clips).unwrap();
             fs::write(ClipsStore::pinned_path(), serialized).expect("should write to file");
         }
     }
+
     pub fn unpin_clip(&mut self, clip_id: &str) {
         let mut pinned_clips = ClipsStore::get_pinned_clips().expect("should get pinned clips");
 
@@ -291,6 +292,20 @@ impl ClipsStore {
 
             let serialized: String = serde_json::to_string(&pinned_clips).unwrap();
             fs::write(ClipsStore::pinned_path(), serialized).expect("should write to file");
+        }
+    }
+
+    pub fn delete_mem_clip(&mut self, clip_id: &str) {
+        if let Some(index) = self.clips.iter().position(|clip| match clip {
+            Clip::Image { path } => clip_id == path, // images use path as id
+            Clip::Text { id, .. } => clip_id == id,
+        }) {
+            let clip = self.clips.remove(index);
+
+            if let Clip::Image { path } = clip {
+                remove_image(&path);
+                self.last_clipped_image = None;
+            }
         }
     }
 

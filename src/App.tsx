@@ -31,8 +31,8 @@ function App() {
   };
 
   const clearClips = async () => {
-    await invoke('clear_clips');
     setItems((prev) => ({ ...prev, mem_clips: [] }));
+    await invoke('clear_clips');
     loadClips();
   };
 
@@ -42,6 +42,24 @@ function App() {
     } else {
       await invoke('unpin_clip', { id });
     }
+    loadClips();
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    // setItems((prev) => {
+    //   let mem_clips = prev.mem_clips.filter((clip) => {
+    //     if ('Image' in clip) {
+    //       return clip.Image.path !== id;
+    //     } else {
+    //       return clip.Text.id !== id;
+    //     }
+    //   });
+
+    //   return { pinned_clips: prev.pinned_clips, mem_clips };
+    // });
+
+    await invoke('delete_clip', { id });
+
     loadClips();
   }, []);
 
@@ -123,7 +141,7 @@ function App() {
 
       {/* List */}
 
-      <Clips {...items} handlePin={handlePin} />
+      <Clips {...items} handlePin={handlePin} handleDelete={handleDelete} />
     </main>
   );
 }

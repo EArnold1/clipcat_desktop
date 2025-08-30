@@ -76,7 +76,10 @@ pub fn clear_images(paths: &[PathBuf]) {
     }
 }
 
-pub fn remove_image(path: PathBuf) {
+pub fn remove_image<P>(path: P)
+where
+    P: AsRef<Path>,
+{
     let mut image_dir = app_image_dir();
 
     image_dir.push(path);
