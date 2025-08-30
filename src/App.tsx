@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import 'src/App.css';
 import { Clips } from 'components/clip';
-import { ClipsData, type Clip } from 'src/types/clip';
+import { ClipsData, PinAction, type Clip } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
@@ -36,10 +36,14 @@ function App() {
     loadClips();
   };
 
-  const handlePin = async (id: string) => {
-    await invoke('pin_clip', { id });
+  const handlePin = useCallback(async (id: string, action: PinAction) => {
+    if (action === 'pin') {
+      await invoke('pin_clip', { id });
+    } else {
+      await invoke('unpin_clip', { id });
+    }
     loadClips();
-  };
+  }, []);
 
   const handleClearClips = useCallback(() => {
     // skipcq: JS-0098

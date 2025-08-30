@@ -274,6 +274,25 @@ impl ClipsStore {
             fs::write(ClipsStore::pinned_path(), serialized).expect("should write to file");
         }
     }
+    pub fn unpin_clip(&mut self, clip_id: &str) {
+        let mut pinned_clips = ClipsStore::get_pinned_clips().expect("should get pinned clips");
+
+        if let Some((index, clip)) = pinned_clips
+            .iter()
+            .enumerate()
+            .find(|(_, clip)| match clip {
+                Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
+                Clip::Text { id, .. } => clip_id == id,
+            })
+        {
+            self.clips.push(clip.clone());
+
+            pinned_clips.remove(index);
+
+            let serialized: String = serde_json::to_string(&pinned_clips).unwrap();
+            fs::write(ClipsStore::pinned_path(), serialized).expect("should write to file");
+        }
+    }
 
     // pub fn search(&self, query: &str) -> std::io::Result<()> {
     //     let clips = &self.clips;

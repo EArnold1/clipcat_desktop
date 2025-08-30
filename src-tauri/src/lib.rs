@@ -70,6 +70,15 @@ fn pin_clip(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
+fn unpin_clip(app: AppHandle, id: String) {
+    let store = &app.state::<Mutex<ClipsStore>>();
+
+    if let Ok(mut lock) = store.lock() {
+        lock.unpin_clip(&id);
+    };
+}
+
+#[tauri::command]
 fn clear_clips(app: AppHandle) {
     let store = app.state::<Mutex<ClipsStore>>();
 
@@ -94,7 +103,8 @@ pub fn run() {
             load_clips,
             copy_clip,
             clear_clips,
-            pin_clip
+            pin_clip,
+            unpin_clip
         ])
         .build(tauri::generate_context!())
         .expect("error while running clipcat application")

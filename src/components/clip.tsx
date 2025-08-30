@@ -1,13 +1,11 @@
-import { ClipsData } from 'src/types/clip';
+import { ClipsData, PinFn } from 'src/types/clip';
 import { ClipItem } from './clip-item';
 
 export const Clips = ({
   pinned_clips,
   mem_clips,
   handlePin,
-}: ClipsData & {
-  handlePin: (id: string) => Promise<void>;
-}) => {
+}: ClipsData & PinFn) => {
   const isEmpty = ![...pinned_clips, ...mem_clips].length;
 
   return (
@@ -18,6 +16,7 @@ export const Clips = ({
               clip={clip}
               key={'Image' in clip ? clip.Image.path : clip.Text.id}
               handlePin={handlePin}
+              isPinned
             />
           ))
         : null}
