@@ -253,12 +253,17 @@ impl ClipsStore {
     }
 
     pub fn pin_clip(&mut self, clip_id: &str) {
+        let mut pinned_clips = ClipsStore::get_pinned_clips().expect("should get pinned clips");
+
+        if pinned_clips.len() >= MAX_PIN_LENGTH {
+            // should send alert saying `limit reached`
+            return;
+        }
+
         if let Some((index, clip)) = self.clips.iter().enumerate().find(|(_, clip)| match clip {
             Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
             Clip::Text { id, .. } => clip_id == id,
         }) {
-            let mut pinned_clips = ClipsStore::get_pinned_clips().expect("should get pinned clips");
-
             pinned_clips.reverse();
 
             pinned_clips.push(clip.clone());
