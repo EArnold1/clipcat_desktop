@@ -13,4 +13,15 @@ type ClipsData = {
   mem_clips: Clip[];
 };
 
-export { type Clip, type ClipsData, type TextClip, type ImageClip };
+type PinAction = 'pin' | 'unpin';
+
+type PinFn = { handlePin: (id: string, action: PinAction) => Promise<void> };
+
+export {
+  type Clip,
+  type ClipsData,
+  type TextClip,
+  type ImageClip,
+  type PinAction,
+  type PinFn,
+};

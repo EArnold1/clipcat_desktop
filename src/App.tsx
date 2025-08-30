@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import 'src/App.css';
 import { Clips } from 'components/clip';
-import { ClipsData, type Clip } from 'src/types/clip';
+import { ClipsData, PinAction, type Clip } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
@@ -31,10 +31,19 @@ function App() {
   };
 
   const clearClips = async () => {
-    setItems((prev) => ({ ...prev, mem_clips: [] }));
     await invoke('clear_clips');
+    setItems((prev) => ({ ...prev, mem_clips: [] }));
     loadClips();
   };
+
+  const handlePin = useCallback(async (id: string, action: PinAction) => {
+    if (action === 'pin') {
+      await invoke('pin_clip', { id });
+    } else {
+      await invoke('unpin_clip', { id });
+    }
+    loadClips();
+  }, []);
 
   const handleClearClips = useCallback(() => {
     // skipcq: JS-0098
@@ -106,14 +115,15 @@ function App() {
             Clear All
           </button>
           <p className="text-gray-600">
-            Pinned: <span className="font-medium">0</span>
+            Pinned:{' '}
+            <span className="font-medium">{items.pinned_clips.length}</span>
           </p>
         </div>
       </section>
 
       {/* List */}
 
-      <Clips {...items} />
+      <Clips {...items} handlePin={handlePin} />
     </main>
   );
 }

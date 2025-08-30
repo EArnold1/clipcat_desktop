@@ -61,6 +61,24 @@ fn copy_clip(app: AppHandle, id: String) {
 }
 
 #[tauri::command]
+fn pin_clip(app: AppHandle, id: String) {
+    let store = &app.state::<Mutex<ClipsStore>>();
+
+    if let Ok(mut lock) = store.lock() {
+        lock.pin_clip(&id);
+    };
+}
+
+#[tauri::command]
+fn unpin_clip(app: AppHandle, id: String) {
+    let store = &app.state::<Mutex<ClipsStore>>();
+
+    if let Ok(mut lock) = store.lock() {
+        lock.unpin_clip(&id);
+    };
+}
+
+#[tauri::command]
 fn clear_clips(app: AppHandle) {
     let store = app.state::<Mutex<ClipsStore>>();
 
@@ -74,14 +92,20 @@ fn clear_clips(app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            let store = ClipsStore::new();
+            let mut store = ClipsStore::new();
             store.remove_images(); // to avoid deleting incoming image on clipboard
             app.manage(Mutex::new(store));
 
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![load_clips, copy_clip, clear_clips])
+        .invoke_handler(tauri::generate_handler![
+            load_clips,
+            copy_clip,
+            clear_clips,
+            pin_clip,
+            unpin_clip
+        ])
         .build(tauri::generate_context!())
         .expect("error while running clipcat application")
         .run(background_watcher);

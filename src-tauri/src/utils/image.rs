@@ -1,4 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use image::{ImageFormat, RgbImage};
 use image_hasher::HasherConfig;
@@ -43,7 +46,10 @@ fn app_image_dir() -> PathBuf {
     dir
 }
 
-pub fn clip_image_path(path: &str) -> PathBuf {
+pub fn clip_image_path<P>(path: P) -> PathBuf
+where
+    P: AsRef<Path>,
+{
     let mut app_image_dir = app_image_dir();
 
     app_image_dir.push(path);
