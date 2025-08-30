@@ -1,11 +1,17 @@
 use image::RgbImage;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, io, path::PathBuf, thread};
+use std::{
+    fmt::Debug,
+    fs::{self, File},
+    io::{self, Write},
+    path::PathBuf,
+    thread,
+};
 
 use crate::{
     services::board::clear_board,
     store::generator::{generate_id, generate_path},
-    utils::image::{clear_images, image_match, remove_image, save_image},
+    utils::image::{clear_images, clip_image_path, image_match, remove_image, save_image},
 };
 
 mod generator {
@@ -38,13 +44,21 @@ mod generator {
     }
 }
 
-/// max number of elements in the history
+/// max number of items in the memory clip store
 const MAX_LENGTH: usize = 10;
+
+/// max number of items in the pinned file
+const MAX_PIN_LENGTH: usize = 5;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Clip {
-    Image { path: String },
-    Text { id: String, value: String },
+    Image {
+        path: String, // should be file_name
+    },
+    Text {
+        id: String,
+        value: String,
+    },
 }
 
 impl Clip {
@@ -88,6 +102,18 @@ impl ClipsStore {
             clips: Vec::new(),
             last_clipped_image: None,
         }
+    }
+
+    fn pinned_path() -> PathBuf {
+        let mut dir: PathBuf = dirs::config_dir()
+            .ok_or("Could not find config directory")
+            .expect("should get home directory");
+
+        dir.push("com.arnold.clipcat_app");
+
+        dir.push("pinned.json");
+
+        dir
     }
 
     pub fn save_clip(&mut self, clip: Clip) -> Clip {
@@ -175,13 +201,16 @@ impl ClipsStore {
     }
 
     /// remove saved images that are no longer in clips store
-    pub fn remove_images(&self) {
-        let image_paths = self
-            .clips // mem clips & pinned clips
-            .iter()
+    pub fn remove_images(&mut self) {
+        let clips = self.load_clips().expect("should return clips");
+
+        let image_paths = clips
+            .pinned_clips
+            .into_iter()
+            .chain(clips.mem_clips)
             .filter_map(|clip| {
                 if let Clip::Image { path } = clip {
-                    Some(PathBuf::from(path))
+                    Some(clip_image_path(path))
                 } else {
                     None
                 }
@@ -199,7 +228,9 @@ impl ClipsStore {
     }
 
     pub fn get_pinned_clips() -> io::Result<Vec<Clip>> {
-        let file = fs::read("history.json").ok();
+        let path = ClipsStore::pinned_path();
+
+        let file = fs::read(&path).ok();
 
         match file {
             Some(buf) => {
@@ -208,12 +239,35 @@ impl ClipsStore {
                 parsed.reverse();
                 Ok(parsed)
             }
-            None => Ok(Vec::new()),
+            None => {
+                let mut file = File::create(&path)?;
+                file.write_all(b"[]").unwrap();
+
+                Ok(Vec::new())
+            }
         }
     }
 
     pub fn set_last_clipped_path(&mut self, path: String) {
         self.last_clipped_image = Some(path);
+    }
+
+    pub fn pin_clip(&mut self, clip_id: &str) {
+        if let Some((index, clip)) = self.clips.iter().enumerate().find(|(_, clip)| match clip {
+            Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
+            Clip::Text { id, .. } => clip_id == id,
+        }) {
+            let mut pinned_clips = ClipsStore::get_pinned_clips().expect("should get pinned clips");
+
+            pinned_clips.reverse();
+
+            pinned_clips.push(clip.clone());
+
+            self.clips.remove(index);
+
+            let serialized: String = serde_json::to_string(&pinned_clips).unwrap();
+            fs::write(ClipsStore::pinned_path(), serialized).expect("should write to file");
+        }
     }
 
     // pub fn search(&self, query: &str) -> std::io::Result<()> {

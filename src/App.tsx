@@ -31,8 +31,13 @@ function App() {
   };
 
   const clearClips = async () => {
-    setItems((prev) => ({ ...prev, mem_clips: [] }));
     await invoke('clear_clips');
+    setItems((prev) => ({ ...prev, mem_clips: [] }));
+    loadClips();
+  };
+
+  const handlePin = async (id: string) => {
+    await invoke('pin_clip', { id });
     loadClips();
   };
 
@@ -106,14 +111,15 @@ function App() {
             Clear All
           </button>
           <p className="text-gray-600">
-            Pinned: <span className="font-medium">0</span>
+            Pinned:{' '}
+            <span className="font-medium">{items.pinned_clips.length}</span>
           </p>
         </div>
       </section>
 
       {/* List */}
 
-      <Clips {...items} />
+      <Clips {...items} handlePin={handlePin} />
     </main>
   );
 }

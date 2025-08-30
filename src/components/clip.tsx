@@ -1,7 +1,13 @@
 import { ClipsData } from 'src/types/clip';
 import { ClipItem } from './clip-item';
 
-export const Clips = ({ pinned_clips, mem_clips }: ClipsData) => {
+export const Clips = ({
+  pinned_clips,
+  mem_clips,
+  handlePin,
+}: ClipsData & {
+  handlePin: (id: string) => Promise<void>;
+}) => {
   const isEmpty = ![...pinned_clips, ...mem_clips].length;
 
   return (
@@ -9,8 +15,9 @@ export const Clips = ({ pinned_clips, mem_clips }: ClipsData) => {
       {pinned_clips.length
         ? pinned_clips.map((clip) => (
             <ClipItem
-              {...clip}
+              clip={clip}
               key={'Image' in clip ? clip.Image.path : clip.Text.id}
+              handlePin={handlePin}
             />
           ))
         : null}
@@ -18,8 +25,9 @@ export const Clips = ({ pinned_clips, mem_clips }: ClipsData) => {
       {mem_clips.length
         ? mem_clips.map((clip) => (
             <ClipItem
-              {...clip}
+              clip={clip}
               key={'Image' in clip ? clip.Image.path : clip.Text.id}
+              handlePin={handlePin}
             />
           ))
         : null}

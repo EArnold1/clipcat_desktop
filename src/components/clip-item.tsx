@@ -5,9 +5,14 @@ import { appDataDir, join } from '@tauri-apps/api/path';
 
 type TextClipProps = TextClip & {
   handleCopy: (id: string) => Promise<void>;
+  handlePin: (id: string) => Promise<void>;
 };
 
-const TextItem = ({ Text: { id, value }, handleCopy }: TextClipProps) => {
+const TextItem = ({
+  Text: { id, value },
+  handleCopy,
+  handlePin,
+}: TextClipProps) => {
   return (
     <div
       className="flex items-start gap-3 px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
@@ -37,6 +42,7 @@ const TextItem = ({ Text: { id, value }, handleCopy }: TextClipProps) => {
         <button
           aria-label="Pin"
           className="p-1 rounded hover:bg-gray-100 group"
+          onClick={() => handlePin(id)}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -77,9 +83,14 @@ const TextItem = ({ Text: { id, value }, handleCopy }: TextClipProps) => {
 
 type ImageClipProps = ImageClip & {
   handleCopy: (id: string) => Promise<void>;
+  handlePin: (id: string) => Promise<void>;
 };
 
-const ImageItem = ({ Image: { path }, handleCopy }: ImageClipProps) => {
+const ImageItem = ({
+  Image: { path },
+  handleCopy,
+  handlePin,
+}: ImageClipProps) => {
   const [assetUrl, setAssetUrl] = useState<string | null>(null);
   const loadSrc = async () => {
     const appDataDirPath = await appDataDir();
@@ -138,6 +149,7 @@ const ImageItem = ({ Image: { path }, handleCopy }: ImageClipProps) => {
         <button
           aria-label="Pin"
           className="p-1 rounded hover:bg-gray-100 group"
+          onClick={() => handlePin(path)}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -176,12 +188,20 @@ const ImageItem = ({ Image: { path }, handleCopy }: ImageClipProps) => {
   );
 };
 
-export const ClipItem = (clip: Clip) => {
+type Props = {
+  clip: Clip;
+  handlePin: (id: string) => Promise<void>;
+};
+
+export const ClipItem = ({ clip, handlePin }: Props) => {
   const handleCopy = useCallback(async (id: string) => {
     await invoke('copy_clip', { id });
   }, []);
 
-  if ('Image' in clip) return <ImageItem {...clip} handleCopy={handleCopy} />;
+  if ('Image' in clip)
+    return (
+      <ImageItem {...clip} handleCopy={handleCopy} handlePin={handlePin} />
+    );
 
-  return <TextItem {...clip} handleCopy={handleCopy} />;
+  return <TextItem {...clip} handleCopy={handleCopy} handlePin={handlePin} />;
 };
