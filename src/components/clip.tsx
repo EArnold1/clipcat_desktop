@@ -1,11 +1,12 @@
-import { ClipsData, PinFn } from 'src/types/clip';
+import { ClipsData, ClipFns } from 'src/types/clip';
 import { ClipItem } from './clip-item';
 
 export const Clips = ({
   pinned_clips,
   mem_clips,
   handlePin,
-}: ClipsData & PinFn) => {
+  handleDelete,
+}: ClipsData & ClipFns) => {
   const isEmpty = ![...pinned_clips, ...mem_clips].length;
 
   return (
@@ -27,6 +28,7 @@ export const Clips = ({
               clip={clip}
               key={'Image' in clip ? clip.Image.path : clip.Text.id}
               handlePin={handlePin}
+              handleDelete={handleDelete}
             />
           ))
         : null}

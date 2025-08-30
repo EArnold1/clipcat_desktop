@@ -8,7 +8,7 @@ use store::{ClipsData, ClipsStore};
 use tauri::{AppHandle, Manager};
 use utils::error::emit_error;
 
-use crate::store::Clip;
+use crate::{services::board::clear_board, store::Clip};
 
 #[tauri::command]
 fn load_clips(app: AppHandle) -> ClipsData {
@@ -88,12 +88,22 @@ fn clear_clips(app: AppHandle) {
         .clear_clips();
 }
 
+#[tauri::command]
+fn delete_clip(app: AppHandle, id: String) {
+    let store = &app.state::<Mutex<ClipsStore>>();
+
+    if let Ok(mut lock) = store.lock() {
+        lock.delete_mem_clip(&id);
+        clear_board();
+    };
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             let mut store = ClipsStore::new();
-            store.remove_images(); // to avoid deleting incoming image on clipboard
+            store.remove_images(); // calling here to avoid deleting incoming image on clipboard, if any
             app.manage(Mutex::new(store));
 
             Ok(())
@@ -104,7 +114,8 @@ pub fn run() {
             copy_clip,
             clear_clips,
             pin_clip,
-            unpin_clip
+            unpin_clip,
+            delete_clip
         ])
         .build(tauri::generate_context!())
         .expect("error while running clipcat application")

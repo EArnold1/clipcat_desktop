@@ -6,13 +6,27 @@ import { ClipsData, PinAction, type Clip } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
+  /// max number of items in the memory clip store
+  const MAX_LENGTH = 10;
+
   const [items, setItems] = useState<ClipsData>({
     pinned_clips: [],
     mem_clips: [],
   });
 
   const handleEvent = useCallback((payload: Clip) => {
-    setItems((prev) => ({ ...prev, mem_clips: [payload, ...prev.mem_clips] }));
+    setItems((prev) => {
+      let mem_clips = prev.mem_clips;
+      // using 10 because that is the limit
+      // if a settings page is added, the value will be dynamically set
+      if (mem_clips.length >= MAX_LENGTH) {
+        mem_clips.pop();
+      }
+      return {
+        pinned_clips: prev.pinned_clips,
+        mem_clips: [payload, ...mem_clips],
+      };
+    });
   }, []);
 
   useTauriEventListener<Clip>({
@@ -31,8 +45,8 @@ function App() {
   };
 
   const clearClips = async () => {
-    await invoke('clear_clips');
     setItems((prev) => ({ ...prev, mem_clips: [] }));
+    await invoke('clear_clips');
     loadClips();
   };
 
@@ -42,6 +56,24 @@ function App() {
     } else {
       await invoke('unpin_clip', { id });
     }
+    loadClips();
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    // setItems((prev) => {
+    //   let mem_clips = prev.mem_clips.filter((clip) => {
+    //     if ('Image' in clip) {
+    //       return clip.Image.path !== id;
+    //     } else {
+    //       return clip.Text.id !== id;
+    //     }
+    //   });
+
+    //   return { pinned_clips: prev.pinned_clips, mem_clips };
+    // });
+
+    await invoke('delete_clip', { id });
+
     loadClips();
   }, []);
 
@@ -123,7 +155,7 @@ function App() {
 
       {/* List */}
 
-      <Clips {...items} handlePin={handlePin} />
+      <Clips {...items} handlePin={handlePin} handleDelete={handleDelete} />
     </main>
   );
 }

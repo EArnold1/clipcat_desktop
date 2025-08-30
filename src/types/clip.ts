@@ -15,7 +15,11 @@ type ClipsData = {
 
 type PinAction = 'pin' | 'unpin';
 
-type PinFn = { handlePin: (id: string, action: PinAction) => Promise<void> };
+type ClipFns = {
+  handlePin: (id: string, action: PinAction) => Promise<void>;
+
+  handleDelete?: (id: string) => Promise<void>;
+};
 
 export {
   type Clip,
@@ -23,5 +27,5 @@ export {
   type TextClip,
   type ImageClip,
   type PinAction,
-  type PinFn,
+  type ClipFns,
 };
