@@ -1,8 +1,14 @@
 import clsx from 'clsx';
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'plain';
+type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'outline'
+  | 'danger'
+  | 'plain'
+  | 'warning';
 type ButtonRounded = 'sm' | 'md' | 'lg' | 'xl';
-type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -26,6 +32,7 @@ const colorVariants: Record<ButtonVariant, string> = {
     'bg-gray-200 text-gray-800 hover:bg-gray-300 border border-gray-400',
   outline: 'border border-gray-400 text-gray-700 hover:bg-gray-100',
   danger: 'bg-red-600 text-white hover:bg-red-700',
+  warning: 'bg-yellow-400 text-white hover:bg-yellow-700',
   plain: 'bg-transparent',
 };
 

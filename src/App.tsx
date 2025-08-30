@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import 'src/App.css';
-import { Clips } from 'components/clip';
+import { Clips } from 'src/components/clip/clips';
 import { ClipsData, PinAction, type Clip } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 import { Button } from 'src/components/button';
@@ -18,7 +18,7 @@ function App() {
 
   const handleEvent = useCallback((payload: Clip) => {
     setItems((prev) => {
-      let mem_clips = prev.mem_clips;
+      const mem_clips = prev.mem_clips;
       // using 10 because that is the limit
       // if a settings page is added, the value will be dynamically set
       if (mem_clips.length >= MAX_LENGTH) {
@@ -62,17 +62,17 @@ function App() {
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    // setItems((prev) => {
-    //   let mem_clips = prev.mem_clips.filter((clip) => {
-    //     if ('Image' in clip) {
-    //       return clip.Image.path !== id;
-    //     } else {
-    //       return clip.Text.id !== id;
-    //     }
-    //   });
+    setItems((prev) => {
+      const mem_clips = prev.mem_clips.filter((clip) => {
+        if ('Image' in clip) {
+          return clip.Image.path !== id;
+        } else {
+          return clip.Text.id !== id;
+        }
+      });
 
-    //   return { pinned_clips: prev.pinned_clips, mem_clips };
-    // });
+      return { pinned_clips: prev.pinned_clips, mem_clips };
+    });
 
     await invoke('delete_clip', { id });
 
@@ -91,7 +91,7 @@ function App() {
 
   return (
     <main className="w-full overflow-hidden relative">
-      <section className="fixed w-full bg-white">
+      <section className="fixed w-full bg-white z-20">
         {/* Header */}
         <div className="flex items-center px-4 py-3 border-b border-gray-200 gap-2">
           <h4 className="flex-1 text-sm font-semibold">Clipcat</h4>
@@ -111,6 +111,7 @@ function App() {
               className="flex items-center bg-none"
               variant="plain"
               size="sm"
+              tooltip="Search"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -160,8 +161,6 @@ function App() {
           </p>
         </div>
       </section>
-
-      {/* List */}
 
       <Clips {...items} handlePin={handlePin} handleDelete={handleDelete} />
     </main>

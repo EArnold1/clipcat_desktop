@@ -1,5 +1,5 @@
 import { ClipsData, ClipFns } from 'src/types/clip';
-import { ClipItem } from './clip-item';
+import { ClipItem } from 'src/components/clip/clip-item';
 
 export const Clips = ({
   pinned_clips,
@@ -10,7 +10,7 @@ export const Clips = ({
   const isEmpty = ![...pinned_clips, ...mem_clips].length;
 
   return (
-    <section className="mt-[98px] h-full">
+    <section className="mt-[102px] h-full">
       {pinned_clips.length
         ? pinned_clips.map((clip) => (
             <ClipItem
