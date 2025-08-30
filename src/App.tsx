@@ -4,6 +4,8 @@ import 'src/App.css';
 import { Clips } from 'components/clip';
 import { ClipsData, PinAction, type Clip } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
+import { Button } from 'src/components/button';
+import { IconButton } from 'src/components/icon-button';
 
 function App() {
   /// max number of items in the memory clip store
@@ -105,7 +107,11 @@ function App() {
               aria-label="Search clipboard"
               className="w-full text-xs outline-none py-2 bg-inherit"
             />
-            <button className="flex items-center">
+            <IconButton
+              className="flex items-center bg-none"
+              variant="plain"
+              size="sm"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
@@ -120,14 +126,16 @@ function App() {
                   d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
                 />
               </svg>
-            </button>
+            </IconButton>
           </form>
         </div>
 
         {/* Controls & Info */}
         <div className="flex items-center px-4 py-2 gap-2 border-b border-gray-200 text-xs justify-between">
-          <button
-            className="cursor-pointer flex items-center gap-1 px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 border border-gray-300"
+          <Button
+            variant="secondary"
+            className="flex gap-x-2 items-center"
+            size="sm"
             onClick={handleClearClips}
           >
             <svg
@@ -145,7 +153,7 @@ function App() {
               />
             </svg>
             Clear All
-          </button>
+          </Button>
           <p className="text-gray-600">
             Pinned:{' '}
             <span className="font-medium">{items.pinned_clips.length}</span>
