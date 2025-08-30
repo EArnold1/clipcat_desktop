@@ -6,13 +6,27 @@ import { ClipsData, PinAction, type Clip } from 'src/types/clip';
 import { useTauriEventListener } from 'src/hooks/useTauriListener';
 
 function App() {
+  /// max number of items in the memory clip store
+  const MAX_LENGTH = 10;
+
   const [items, setItems] = useState<ClipsData>({
     pinned_clips: [],
     mem_clips: [],
   });
 
   const handleEvent = useCallback((payload: Clip) => {
-    setItems((prev) => ({ ...prev, mem_clips: [payload, ...prev.mem_clips] }));
+    setItems((prev) => {
+      let mem_clips = prev.mem_clips;
+      // using 10 because that is the limit
+      // if a settings page is added, the value will be dynamically set
+      if (mem_clips.length >= MAX_LENGTH) {
+        mem_clips.pop();
+      }
+      return {
+        pinned_clips: prev.pinned_clips,
+        mem_clips: [payload, ...mem_clips],
+      };
+    });
   }, []);
 
   useTauriEventListener<Clip>({
