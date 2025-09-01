@@ -9,7 +9,7 @@ use std::{
 };
 
 use crate::{
-    services::board::clear_board,
+    services::{board::clear_board, search::fuzzy_search},
     store::generator::{generate_id, generate_path},
     utils::image::{clear_images, clip_image_path, image_match, remove_image, save_image},
 };
@@ -278,17 +278,13 @@ impl ClipsStore {
     pub fn unpin_clip(&mut self, clip_id: &str) {
         let mut pinned_clips = ClipsStore::get_pinned_clips().expect("should get pinned clips");
 
-        if let Some((index, clip)) = pinned_clips
-            .iter()
-            .enumerate()
-            .find(|(_, clip)| match clip {
-                Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
-                Clip::Text { id, .. } => clip_id == id,
-            })
-        {
-            self.clips.push(clip.clone());
+        if let Some(index) = pinned_clips.iter().position(|clip| match clip {
+            Clip::Image { path } => clip_id == path, //NOTE: for images the path is used as id
+            Clip::Text { id, .. } => clip_id == id,
+        }) {
+            let clip = pinned_clips.remove(index);
 
-            pinned_clips.remove(index);
+            self.clips.push(clip.clone());
 
             let serialized: String = serde_json::to_string(&pinned_clips).unwrap();
             fs::write(ClipsStore::pinned_path(), serialized).expect("should write to file");
@@ -309,22 +305,33 @@ impl ClipsStore {
         }
     }
 
-    // pub fn search(&self, query: &str) -> std::io::Result<()> {
-    //     let clips = &self.clips;
+    /// Search mem text clips,
+    /// this doesn't do image text search.
+    pub fn search(&self, query: &str) -> Vec<Clip> {
+        let clips = self.clips.clone();
 
-    //     let filtered_result = clips.iter().filter(|item| {
-    //         let value = fuzzy_search(query, &item.value.split(' ').collect::<Vec<&str>>(), None);
+        let mut filtered_result = clips
+            .into_iter()
+            .filter_map(|clip| {
+                if let Clip::Text { value, id } = &clip {
+                    let (search, dist) =
+                        fuzzy_search(query, &value.split(' ').collect::<Vec<&str>>(), None);
+                    if !search.is_empty() || id.contains(query) {
+                        Some((clip, dist))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<(Clip, usize)>>();
 
-    //         // TODO: sort by closest match first
-    //         !value.is_empty() || item.id.contains(query)
-    //     });
+        filtered_result.sort_by_key(|(_, dist)| *dist);
 
-    //     println!("Searching for: {query}\n");
-
-    //     for item in filtered_result {
-    //         println!("id: {} value: {}", item.id, item.value);
-    //     }
-
-    //     Ok(())
-    // }
+        filtered_result
+            .into_iter()
+            .map(|(clip, _)| clip)
+            .collect::<Vec<Clip>>()
+    }
 }

@@ -98,6 +98,18 @@ fn delete_clip(app: AppHandle, id: String) {
     };
 }
 
+#[tauri::command]
+fn search_clips(app: AppHandle, query: String) -> Option<Vec<Clip>> {
+    let store = &app.state::<Mutex<ClipsStore>>();
+
+    let result = match store.lock() {
+        Ok(store_lock) => Some(store_lock.search(&query)),
+        Err(_) => None,
+    };
+
+    result
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -115,7 +127,8 @@ pub fn run() {
             clear_clips,
             pin_clip,
             unpin_clip,
-            delete_clip
+            delete_clip,
+            search_clips
         ])
         .build(tauri::generate_context!())
         .expect("error while running clipcat application")

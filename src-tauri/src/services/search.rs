@@ -70,7 +70,7 @@ pub fn fuzzy_search<'a>(
     query: &str,
     list: &[&'a str],
     max_distance: Option<usize>,
-) -> Vec<&'a str> {
+) -> (Vec<&'a str>, usize) {
     let query = &query.to_lowercase();
     let max_distance = max_distance.unwrap_or(4);
 
@@ -85,9 +85,17 @@ pub fn fuzzy_search<'a>(
 
     mp.sort_by_key(|a| a.distance);
 
-    mp.iter()
-        .map(|Fuzzy { item, .. }| *item)
-        .collect::<Vec<&str>>()
+    let mut dist_acc = 0;
+
+    let result = mp
+        .iter()
+        .map(|Fuzzy { item, distance }| {
+            dist_acc += distance;
+            *item
+        })
+        .collect::<Vec<&str>>();
+
+    (result, dist_acc)
 }
 
 #[cfg(test)]
@@ -107,6 +115,6 @@ mod tests {
         let list = ["clipcat", "clipboard", "rust-app", "cat", "act"];
         let result = super::fuzzy_search(query, &list, Some(5));
 
-        assert_eq!(vec!["cat", "act", "clipcat"], result)
+        assert_eq!(vec!["cat", "act", "clipcat"], result.0)
     }
 }
