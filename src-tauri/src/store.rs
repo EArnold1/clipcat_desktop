@@ -9,6 +9,7 @@ use std::{
 };
 
 use crate::{
+    config::{APP_IDENTIFIER, CLIPS_MAX_LENGTH, MAX_PIN_LENGTH, PINNED_CLIPS_FILE_NAME},
     services::{board::clear_board, search::fuzzy_search},
     store::generator::{generate_id, generate_path},
     utils::image::{clear_images, clip_image_path, image_match, remove_image, save_image},
@@ -43,12 +44,6 @@ mod generator {
         format!("{}.jpeg", unique_string(Some(7)))
     }
 }
-
-/// max number of items in the memory clip store
-const MAX_LENGTH: usize = 10;
-
-/// max number of items in the pinned file
-const MAX_PIN_LENGTH: usize = 5;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Clip {
@@ -109,9 +104,9 @@ impl ClipsStore {
             .ok_or("Could not find config directory")
             .expect("should get home directory");
 
-        dir.push("com.arnold.clipcat_app");
+        dir.push(APP_IDENTIFIER);
 
-        dir.push("pinned.json");
+        dir.push(PINNED_CLIPS_FILE_NAME);
 
         dir
     }
@@ -119,7 +114,7 @@ impl ClipsStore {
     pub fn save_clip(&mut self, clip: Clip) -> Clip {
         let clips = &mut self.clips;
 
-        if clips.len() >= MAX_LENGTH {
+        if clips.len() >= CLIPS_MAX_LENGTH {
             // remove item when list is equal to max length
             let clip = &clips.remove(0);
 
@@ -256,7 +251,7 @@ impl ClipsStore {
         let mut pinned_clips = ClipsStore::get_pinned_clips().expect("should get pinned clips");
 
         if pinned_clips.len() >= MAX_PIN_LENGTH {
-            // should send alert saying `limit reached`
+            //TODO: should send alert saying `limit reached`
             return;
         }
 

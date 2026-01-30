@@ -6,7 +6,7 @@ use std::{
 use image::{ImageFormat, RgbImage};
 use image_hasher::HasherConfig;
 
-const IMAGE_DISTANCE_THRESHOLD: u32 = 10;
+use crate::config::{APP_IDENTIFIER, IMAGES_FOLDER_PATH, IMAGE_DISTANCE_THRESHOLD};
 
 /// function to compare images by hash
 /// using `10` as the distance threshold
@@ -24,7 +24,6 @@ pub fn image_match(last_clipped_path: &str, new_clip_data: &RgbImage) -> bool {
 pub fn save_image(rgb_image: RgbImage, path: &str) {
     let image_path = clip_image_path(path);
 
-    // create image dir if it doesn't exist
     rgb_image
         .save_with_format(image_path, ImageFormat::Jpeg)
         .expect("should save file"); // TODO: properly handle error
@@ -36,12 +35,10 @@ fn app_image_dir() -> PathBuf {
         .expect("should get home directory");
 
     // TODO: handle literal values well
-    dir.push("com.arnold.clipcat_app");
-    dir.push("images");
+    dir.push(APP_IDENTIFIER);
+    dir.push(IMAGES_FOLDER_PATH);
 
-    if let Some(parent) = dir.parent() {
-        fs::create_dir_all(parent).unwrap();
-    };
+    fs::create_dir_all(&dir).expect("Should recursively create directories");
 
     dir
 }

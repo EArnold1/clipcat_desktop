@@ -1,3 +1,4 @@
+mod config;
 mod services;
 mod store;
 mod utils;
@@ -13,21 +14,6 @@ use crate::{services::board::clear_board, store::Clip};
 #[tauri::command]
 fn load_clips(app: AppHandle) -> ClipsData {
     let store = app.state::<Mutex<ClipsStore>>();
-
-    // if let Ok(mut lock) = store.lock() {
-    //     match lock.load_clips() {
-    //         Ok(clips) => {
-    //             return clips;
-    //         }
-    //         Err(e) => {
-    //             // emit error
-    //             emit_error(&app, "failed to get clip");
-    //             eprintln!("an error occurred while getting clip {:?}", e);
-
-    //             return ClipsData::default();
-    //         }
-    //     }
-    // };
 
     let clips = store
         .lock()

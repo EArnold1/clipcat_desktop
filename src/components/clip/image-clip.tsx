@@ -1,8 +1,8 @@
-import { convertFileSrc } from '@tauri-apps/api/core';
-import { useEffect, useState } from 'react';
-import { ImageClip, ClipFns } from 'src/types/clip';
-import { appDataDir, join } from '@tauri-apps/api/path';
-import { ClipCard } from 'src/components/clip/card';
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+import { ImageClip, ClipFns } from "src/types/clip";
+import { appDataDir, join } from "@tauri-apps/api/path";
+import { ClipCard } from "src/components/clip/card";
 
 type ImageClipProps = ImageClip & {
   isPinned?: boolean;
