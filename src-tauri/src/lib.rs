@@ -31,9 +31,6 @@ fn copy_clip(app: AppHandle, id: String) {
     if let Ok(mut lock) = store.lock() {
         match lock.get_clip(&id) {
             Ok(Some(clip)) => {
-                if let Clip::Image { path } = &clip {
-                    lock.set_last_clipped_path(path.clone());
-                }
                 write_clipboard(clip);
             }
             Err(e) => {

@@ -4,25 +4,21 @@ use std::{
 };
 
 use image::{ImageFormat, RgbImage};
-use image_hasher::HasherConfig;
+use image_hasher::{HasherConfig, ImageHash};
 
-use crate::config::{APP_IDENTIFIER, IMAGES_FOLDER_PATH, IMAGE_DISTANCE_THRESHOLD};
+use crate::config::{APP_IDENTIFIER, IMAGES_FOLDER_PATH};
 
-/// function to compare images by hash
-/// using `10` as the distance threshold
-pub fn image_match(last_clipped_path: &str, new_clip_data: &RgbImage) -> bool {
+/// A function to create an image has from a path
+pub fn create_image_hash(path: impl Into<PathBuf>) -> ImageHash {
     let hasher = HasherConfig::new().to_hasher();
 
-    let img_one = image::open(clip_image_path(last_clipped_path)).expect("last image should exist");
+    let img_one = image::open(clip_image_path(path.into())).expect("Image should exist in path");
 
-    let hash1 = hasher.hash_image(&img_one);
-    let hash2 = hasher.hash_image(new_clip_data);
-
-    hash1.dist(&hash2) < IMAGE_DISTANCE_THRESHOLD
+    hasher.hash_image(&img_one)
 }
 
-pub fn save_image(rgb_image: RgbImage, path: &str) {
-    let image_path = clip_image_path(path);
+pub fn save_image(rgb_image: RgbImage, path: impl Into<PathBuf>) {
+    let image_path = clip_image_path(path.into());
 
     rgb_image
         .save_with_format(image_path, ImageFormat::Jpeg)
@@ -34,7 +30,6 @@ fn app_image_dir() -> PathBuf {
         .ok_or("Could not find config directory")
         .expect("should get home directory");
 
-    // TODO: handle literal values well
     dir.push(APP_IDENTIFIER);
     dir.push(IMAGES_FOLDER_PATH);
 

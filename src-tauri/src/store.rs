@@ -1,6 +1,8 @@
 use image::RgbImage;
+use image_hasher::{HasherConfig, ImageHash};
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashSet,
     fmt::Debug,
     fs::{self, File},
     io::{self, Write},
@@ -12,7 +14,7 @@ use crate::{
     config::{APP_IDENTIFIER, CLIPS_MAX_LENGTH, MAX_PIN_LENGTH, PINNED_CLIPS_FILE_NAME},
     services::{board::clear_board, search::fuzzy_search},
     store::generator::{generate_id, generate_path},
-    utils::image::{clear_images, clip_image_path, image_match, remove_image, save_image},
+    utils::image::{clear_images, clip_image_path, create_image_hash, remove_image, save_image},
 };
 
 mod generator {
@@ -48,7 +50,7 @@ mod generator {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Clip {
     Image {
-        path: String, // should be file_name
+        path: String, //TODO: should be file_name
     },
     Text {
         id: String,
@@ -86,16 +88,15 @@ pub struct ClipsData {
 
 #[derive(Clone, Debug)]
 pub struct ClipsStore {
-    clips: Vec<Clip>,
-    // write checks to make sure last clipped image path is properly updated
-    last_clipped_image: Option<String>,
+    clips: Vec<Clip>, // TODO: use a HashMap
+    image_set: HashSet<ImageHash>,
 }
 
 impl ClipsStore {
     pub fn new() -> Self {
         ClipsStore {
             clips: Vec::new(),
-            last_clipped_image: None,
+            image_set: HashSet::new(),
         }
     }
 
@@ -123,10 +124,6 @@ impl ClipsStore {
             }
         };
 
-        if let Clip::Image { path } = &clip {
-            self.last_clipped_image = Some(path.clone());
-        };
-
         clips.push(clip.clone());
 
         clip
@@ -143,19 +140,24 @@ impl ClipsStore {
         }))
     }
 
-    fn check_and_save_image(&mut self, path: String, image: Option<RgbImage>) -> bool {
+    fn check_and_save_image(&mut self, path: &str, image: Option<RgbImage>) -> bool {
         let Some(img) = image else {
             return false;
         };
 
-        if let Some(last_path) = &self.last_clipped_image {
-            if image_match(last_path, &img) {
-                return true;
-            }
+        let hasher = HasherConfig::new().to_hasher();
+        let image_hash = hasher.hash_image(&img);
+
+        if self.image_set.contains(&image_hash) {
+            return true;
         }
 
+        self.image_set.insert(image_hash);
+
+        let image_path: PathBuf = [path].iter().collect();
+
         thread::spawn(move || {
-            save_image(img, &path);
+            save_image(img, image_path);
         });
 
         false
@@ -176,7 +178,7 @@ impl ClipsStore {
     /// While for texts, it checks if the value already exists in pinned or memory clips.
     pub fn is_clipped(&mut self, new_clip: &Clip, image: Option<RgbImage>) -> bool {
         if let Clip::Image { path } = new_clip {
-            return self.check_and_save_image(path.clone(), image);
+            return self.check_and_save_image(path, image);
         }
 
         self.check_text_clip(new_clip)
@@ -195,7 +197,7 @@ impl ClipsStore {
         })
     }
 
-    /// remove saved images that are no longer in clips store
+    /// This function removes saved images that are no longer on the clip store
     pub fn remove_images(&mut self) {
         let clips = self.load_clips().expect("should return clips");
 
@@ -218,7 +220,6 @@ impl ClipsStore {
     pub fn clear_clips(&mut self) {
         clear_board();
         self.clips.clear();
-        self.last_clipped_image = None;
         self.remove_images();
     }
 
@@ -241,10 +242,6 @@ impl ClipsStore {
                 Ok(Vec::new())
             }
         }
-    }
-
-    pub fn set_last_clipped_path(&mut self, path: String) {
-        self.last_clipped_image = Some(path);
     }
 
     pub fn pin_clip(&mut self, clip_id: &str) {
@@ -294,8 +291,10 @@ impl ClipsStore {
             let clip = self.clips.remove(index);
 
             if let Clip::Image { path } = clip {
+                let image_hash = create_image_hash(&path);
+                self.image_set.remove(&image_hash);
+
                 remove_image(&path);
-                self.last_clipped_image = None;
             }
         }
     }
