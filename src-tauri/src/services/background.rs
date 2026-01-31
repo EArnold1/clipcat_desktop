@@ -49,6 +49,9 @@ fn watcher(sender: Option<Arc<Sender<Clip>>>, app_handle: AppHandle) {
 pub fn background_watcher(app_handle: &AppHandle, event: RunEvent) {
     {
         // background task for when UI is closed
+        // This doesn't work as intended
+        // The goal is to have a process that will run even after the application is closed
+        // And it will write to the same store.
         if let tauri::RunEvent::ExitRequested { api, .. } = &event {
             api.prevent_exit();
 
